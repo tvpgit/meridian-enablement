@@ -130,7 +130,8 @@ async function callClaude(messages, systemPrompt, identity) {
     idBlock += ` Greet them by name and tailor the conversation accordingly.\n\n`;
     fullSystem = idBlock + systemPrompt;
   }
-  const text = await callAPI(messages, fullSystem, 1000);
+  const outbound = messages.length > 0 ? messages : [{ role: "user", content: "Please begin the session." }];
+  const text = await callAPI(outbound, fullSystem, 1000);
   return text || "Sorry, I couldn't generate a response.";
 }
 
