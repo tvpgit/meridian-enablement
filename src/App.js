@@ -116,7 +116,9 @@ const ONBOARDING_TEMPLATE = [
 ];
 
 async function callClaude(messages, systemPrompt, identity) {
-  let fullSystem = systemPrompt;
+  const plainTextRule =
+    "\n\nFormatting: Respond in plain, conversational text. Do not use Markdown of any kind — no #, ##, or ### headings; no ** or __ for bold; no asterisks or dashes as bullet points; and no --- divider lines. If you need to list items, write them as short sentences or separate them with line breaks, not bullet symbols.";
+  let fullSystem = systemPrompt + plainTextRule;
   if (identity && identity.name) {
     let idBlock =
       `The person you are speaking with is ${identity.name}` +
@@ -128,7 +130,7 @@ async function callClaude(messages, systemPrompt, identity) {
       idBlock += ` The client account this session is about is: ${identity.client}.`;
     }
     idBlock += ` Greet them by name and tailor the conversation accordingly.\n\n`;
-    fullSystem = idBlock + systemPrompt;
+    fullSystem = idBlock + systemPrompt + plainTextRule;
   }
   const outbound = messages.length > 0 ? messages : [{ role: "user", content: "Please begin the session." }];
   const text = await callAPI(outbound, fullSystem, 1000);
