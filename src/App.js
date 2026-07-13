@@ -994,12 +994,6 @@ const TAB_CONFIG = {
   ],
   team: [
     {
-      id: "activity",
-      label: "Client Activity",
-      type: "feed",
-      desc: "See summaries of recent client self-service sessions, shared by clients with their account team.",
-    },
-    {
       id: "copilot",
       label: "Onboarding Co-pilot",
       prompt: ONBOARDING_MODES.copilot,
@@ -1008,6 +1002,22 @@ const TAB_CONFIG = {
       clientField: "Client name / account",
       startLabel: "Onboarding Co-pilot",
       desc: "Prep and track a client's onboarding — next steps, likely blockers, and follow-ups.",
+    },
+    {
+      id: "training-copilot",
+      label: "Training Co-pilot",
+      prompt: TRAINING_MODES.team,
+      internal: true,
+      canDraftTicket: true,
+      clientField: "Client name / account",
+      startLabel: "Training Co-pilot",
+      desc: "Identify what training to offer this client based on their usage and goals.",
+    },
+    {
+      id: "activity",
+      label: "Client Activity",
+      type: "feed",
+      desc: "See summaries of recent client self-service sessions, shared by clients with their account team.",
     },
     {
       id: "practice",
@@ -1026,16 +1036,6 @@ const TAB_CONFIG = {
       clientField: "Client name / account",
       startLabel: "Shared Onboarding Session",
       desc: "Facilitate a live onboarding call with the client and CSM together.",
-    },
-    {
-      id: "training-copilot",
-      label: "Training Co-pilot",
-      prompt: TRAINING_MODES.team,
-      internal: true,
-      canDraftTicket: true,
-      clientField: "Client name / account",
-      startLabel: "Training Co-pilot",
-      desc: "Identify what training to offer this client based on their usage and goals.",
     },
   ],
 };
