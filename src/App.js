@@ -1224,16 +1224,16 @@ function AboutModal({ onClose }) {
         </div>
         <div style={{ padding: 22 }}>
           <Section label="What this is">
-            A working demo of an AI-powered enablement agent for a fictional SaaS company called Meridian. It is a portfolio piece, not a real product. Two audiences share one tool: clients get guided onboarding and self-directed learning, while the internal team gets co-pilots, a live client-activity feed, and one-click Jira ticket drafting.
+            A working demo of an AI-powered enablement agent for a fictional SaaS company called Meridian. It's a portfolio piece, not a real product. Two audiences share one tool: clients get guided onboarding and self-directed learning, while the internal team gets co-pilots, a live client-activity feed, and one-click Jira ticket drafting.
           </Section>
           <Section label="Why I built it">
-            I believe the fastest way to learn what is worth building is to build something real and put it in front of people. Business analysts call this build to elicit. Rather than only describing how I approach problems, I wanted to show it: I did enough analysis to know who the users are and what was worth building, then designed, built, and shipped this. Every reaction to it is a form of elicitation that sharpens the thinking.
+            I believe the fastest way to learn what is worth building is to build something real and put the app in front of people. Business analysts call this build to elicit. Rather than only describing how I approach problems, I wanted to show it. I did enough analysis to know who the users are and what was worth building, then designed, built, and shipped this. Every reaction to the app is a form of elicitation that sharpens the thinking.
           </Section>
           <Section label="A note on governance">
             Any action with a real consequence, like drafting a Jira ticket, is proposed by the agent and approved by a human. The human-in-the-loop step is deliberate governance while the agent earns trust, with a path to more autonomy over time.
           </Section>
           <Section label="Who built it">
-            I am a client enablement and business analysis professional, and I built this during my search for my next role. If you would like to know more about how I work, or you are hiring in business analysis, client enablement, or product operations, I would love to connect.
+            I'm a client enablement and business analysis professional. I built this app as I conduct a job search for my next role. If you'd like to know more about how I work, or you're hirining in healthcare, education, or New York City government in business analysis, client enablement, or product operations, I'd love to connect!
           </Section>
           <a href="https://www.linkedin.com/in/tom-porto/" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", background: COLORS.amber, color: COLORS.navy, textDecoration: "none", borderRadius: 9, padding: "11px 20px", fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: "0.03em", marginTop: 4 }}>
             Connect with me on LinkedIn &rarr;
