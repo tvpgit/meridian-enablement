@@ -685,8 +685,8 @@ function ChatInterface({ systemPrompt, placeholder, startLabel, internal, client
           maxWidth: 320, textAlign: "center", lineHeight: 1.4, marginTop: -6,
         }}>
           {isInternal
-            ? "In production, this is populated automatically from HubSpot."
-            : "In production, your details are populated automatically from HubSpot."}
+            ? "In production, your name, role, and client account are populated automatically from HubSpot."
+            : "In production, your name, role, and company name are populated automatically from HubSpot."}
         </div>
 
         <button
@@ -1285,7 +1285,7 @@ export default function App() {
                   textTransform: "uppercase",
                 }}
               >
-                View as
+                View as:
               </span>
               <div
                 style={{
