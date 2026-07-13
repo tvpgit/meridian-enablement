@@ -448,6 +448,16 @@ function ChatInterface({ systemPrompt, placeholder, startLabel, internal, client
     && (!companyField || !!company.trim())
     && (!isInternal || !!client.trim());
 
+  const missingFields = [];
+  if (!name.trim()) missingFields.push("name");
+  if (!role.trim()) missingFields.push("role");
+  if (companyField && !company.trim()) missingFields.push(companyField.toLowerCase());
+  if (isInternal && !client.trim()) missingFields.push((clientFieldLabel || "client account").toLowerCase());
+  const missingText =
+    missingFields.length === 0 ? "" :
+    missingFields.length === 1 ? missingFields[0] :
+    missingFields.slice(0, -1).join(", ") + " and " + missingFields[missingFields.length - 1];
+
   const activePrompt = systemPrompt;
 
   async function startConversation() {
@@ -710,6 +720,18 @@ function ChatInterface({ systemPrompt, placeholder, startLabel, internal, client
         >
           BEGIN SESSION →
         </button>
+
+        {!formValid && (
+          <div style={{
+            marginTop: 12,
+            color: COLORS.slate,
+            fontSize: 12,
+            fontFamily: "'DM Sans', sans-serif",
+            textAlign: "center",
+          }}>
+            Enter your {missingText} to begin.
+          </div>
+        )}
       </div>
     );
   }
