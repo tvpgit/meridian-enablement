@@ -1213,28 +1213,21 @@ function AboutModal({ onClose }) {
     </div>
   );
   return (
-    <div
-      style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(6,12,20,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto", background: COLORS.navyLight, border: `1px solid ${COLORS.navyMid}`, borderRadius: 16, boxShadow: "0 24px 70px rgba(0,0,0,0.55)", animation: "fadeSlideIn 0.25s ease" }}
-      >
+    <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(6,12,20,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto", background: COLORS.navyLight, border: `1px solid ${COLORS.navyMid}`, borderRadius: 16, boxShadow: "0 24px 70px rgba(0,0,0,0.55)" }}>
         <div style={{ padding: "18px 22px", borderBottom: `1px solid ${COLORS.navyMid}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 18, fontWeight: 700, color: COLORS.amber, letterSpacing: "0.06em" }}>MERIDIAN</span>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: COLORS.slate, letterSpacing: "0.1em", textTransform: "uppercase" }}>Enablement Intelligence</span>
           </div>
-          <button onClick={onClose} style={{ background: "transparent", border: "none", color: COLORS.slate, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
+          <button onClick={onClose} style={{ background: "transparent", border: "none", color: COLORS.slate, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>&times;</button>
         </div>
-
         <div style={{ padding: 22 }}>
           <Section label="What this is">
             A working demo of an AI-powered enablement agent for a fictional SaaS company called Meridian. It is a portfolio piece, not a real product. Two audiences share one tool: clients get guided onboarding and self-directed learning, while the internal team gets co-pilots, a live client-activity feed, and one-click Jira ticket drafting.
           </Section>
           <Section label="Why I built it">
-            I believe the fastest way to learn what is worth building is to build something real and put it in front of people. Business analysts call this "build to elicit." Rather than only describing how I approach problems, I wanted to show it: I did enough analysis to know who the users are and what was worth building, then designed, built, and shipped this. Every reaction to it is a form of elicitation that sharpens the thinking.
+            I believe the fastest way to learn what is worth building is to build something real and put it in front of people. Business analysts call this build to elicit. Rather than only describing how I approach problems, I wanted to show it: I did enough analysis to know who the users are and what was worth building, then designed, built, and shipped this. Every reaction to it is a form of elicitation that sharpens the thinking.
           </Section>
           <Section label="A note on governance">
             Any action with a real consequence, like drafting a Jira ticket, is proposed by the agent and approved by a human. The human-in-the-loop step is deliberate governance while the agent earns trust, with a path to more autonomy over time.
@@ -1242,13 +1235,8 @@ function AboutModal({ onClose }) {
           <Section label="Who built it">
             I am a client enablement and business analysis professional, and I built this during my search for my next role. If you would like to know more about how I work, or you are hiring in business analysis, client enablement, or product operations, I would love to connect.
           </Section>
-          
-            href="https://www.linkedin.com/in/tom-porto/"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ display: "inline-block", background: COLORS.amber, color: COLORS.navy, textDecoration: "none", borderRadius: 9, padding: "11px 20px", fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: "0.03em", marginTop: 4 }}
-          >
-            Connect with me on LinkedIn →
+          <a href="https://www.linkedin.com/in/tom-porto/" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", background: COLORS.amber, color: COLORS.navy, textDecoration: "none", borderRadius: 9, padding: "11px 20px", fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: "0.03em", marginTop: 4 }}>
+            Connect with me on LinkedIn &rarr;
           </a>
           <div style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif", marginTop: 16, lineHeight: 1.5 }}>
             Meridian is a fictional company used for portfolio demonstration purposes only.
