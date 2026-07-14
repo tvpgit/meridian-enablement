@@ -1233,7 +1233,7 @@ function AboutModal({ onClose }) {
             Any action with a real consequence, like drafting a Jira ticket, is proposed by the agent and approved by a human. The human-in-the-loop step is deliberate governance while the agent earns trust, with a path to more autonomy over time.
           </Section>
           <Section label="Who built it">
-            I'm a client enablement and business analysis professional. I built this app as I conduct a job search for my next role. If you'd like to know more about how I work, or you're hirining in healthcare, education, or New York City government in business analysis, client enablement, or product operations, I'd love to connect!
+            I'm a client enablement and business analysis professional. I built this app as I conduct a job search for my next role. If you'd like to know more about how I work and approach problems, or you're hiring in healthcare, education, or New York City government in business analysis, client enablement, or product operations, I'd love to connect!
           </Section>
           <a href="https://www.linkedin.com/in/tom-porto/" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", background: COLORS.amber, color: COLORS.navy, textDecoration: "none", borderRadius: 9, padding: "11px 20px", fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: "0.03em", marginTop: 4 }}>
             Connect with me on LinkedIn &rarr;
