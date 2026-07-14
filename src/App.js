@@ -16,6 +16,16 @@ async function callAPI(messages, system, maxTokens) {
   return data.text || "";
 }
 
+const MESSAGE_CAP = 10;
+function getMsgCount() {
+  try { return parseInt(localStorage.getItem("meridian_msg_count") || "0", 10) || 0; }
+  catch (e) { return 0; }
+}
+function bumpMsgCount() {
+  try { const n = getMsgCount() + 1; localStorage.setItem("meridian_msg_count", String(n)); return n; }
+  catch (e) { return 0; }
+}
+
 const COLORS = {
   navy: "#0D1B2A",
   navyLight: "#132236",
@@ -431,6 +441,7 @@ function ChatInterface({ systemPrompt, placeholder, startLabel, internal, client
   const [ticketError, setTicketError] = useState(null);
   const [sharing, setSharing] = useState(false);
   const [shared, setShared] = useState(false);
+  const [capReached, setCapReached] = useState(getMsgCount() >= MESSAGE_CAP);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -473,6 +484,8 @@ function ChatInterface({ systemPrompt, placeholder, startLabel, internal, client
 
   async function sendMessage() {
     if (!input.trim() || loading) return;
+    if (getMsgCount() >= MESSAGE_CAP) { setCapReached(true); return; }
+    bumpMsgCount();
     const userMsg = { role: "user", content: input.trim() };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
@@ -911,7 +924,21 @@ function ChatInterface({ systemPrompt, placeholder, startLabel, internal, client
         </div>
       )}
 
-      {/* Input */}
+      {/* Input or cap banner */}
+      {capReached ? (
+        <div style={{ padding: "16px 20px", borderTop: `1px solid ${COLORS.navyMid}`, textAlign: "center" }}>
+          <div style={{ color: COLORS.white, fontSize: 14, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", marginBottom: 6 }}>
+            You've reached the demo limit.
+          </div>
+          <div style={{ color: COLORS.slate, fontSize: 13, fontFamily: "'DM Sans', sans-serif", marginBottom: 12 }}>
+            Thanks for exploring Meridian! I'd love to hear your thoughts.
+          </div>
+          <a href="https://www.linkedin.com/in/tom-porto/" target="_blank" rel="noopener noreferrer"
+            style={{ display: "inline-block", background: COLORS.amber, color: COLORS.navy, textDecoration: "none", borderRadius: 9, padding: "10px 18px", fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: "0.03em" }}>
+            Connect with me on LinkedIn
+          </a>
+        </div>
+      ) : (
       <div
         style={{
           padding: "12px 16px",
@@ -984,6 +1011,7 @@ function ChatInterface({ systemPrompt, placeholder, startLabel, internal, client
           →
         </button>
       </div>
+      )}
     </div>
   );
 }
