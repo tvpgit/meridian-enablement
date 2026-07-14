@@ -747,6 +747,16 @@ function ChatInterface({ systemPrompt, placeholder, startLabel, internal, client
             Enter your {missingText} to begin.
           </div>
         )}
+        <div style={{
+          marginTop: 14,
+          color: COLORS.slate,
+          fontSize: 11,
+          fontFamily: "'DM Sans', sans-serif",
+          textAlign: "center",
+          opacity: 0.85,
+        }}>
+          This is a demo. Your name and messages are in no way stored or saved.
+        </div>
       </div>
     );
   }
@@ -1252,7 +1262,7 @@ function AboutModal({ onClose }) {
         </div>
         <div style={{ padding: 22 }}>
           <Section label="What this is">
-            A working demo of an AI-powered enablement agent for a fictional SaaS company called Meridian. It's a portfolio piece, not a real product. Two audiences share one tool: clients get guided onboarding and self-directed learning, while the internal team gets co-pilots, a live client-activity feed, and one-click Jira ticket drafting.
+            A working demo of an AI-powered enablement agent for a fictional SaaS company called Meridian. It's a portfolio piece, not a real product. Two audiences share one tool: clients get guided onboarding and self-directed learning, while the internal team gets co-pilots, a live client-activity feed, and one-click Jira ticket drafting. Nothing you enter is stored or saved after your session.
           </Section>
           <Section label="Why I built it">
             I believe the fastest way to learn what's worth building is to build something real and put it in front of people. Business analysts call this 'build to elicit'. Rather than only describing how I approach problems, I wanted to show it. I did enough analysis to know who the users are and what's worth building, then designed, built, and shipped this app. Every reaction to the app is a form of elicitation that sharpens the thinking.
