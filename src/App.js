@@ -2,11 +2,15 @@ import { useState, useRef, useEffect } from "react";
 
 // Calls our Vercel serverless proxy at /api/chat. The proxy attaches the
 // Anthropic API key server-side — it is never exposed in the browser.
-async function callAPI(messages, system, maxTokens) {
+// We send a `mode` id, not prompt text: every system prompt and max_tokens
+// value is owned by the server, so a caller hitting this endpoint directly
+// (curl, a script) can't supply its own instructions or an unbounded token
+// budget. See api/chat.js for the server-side prompt templates.
+async function callAPI(messages, mode, identity, moduleLabel) {
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages, system, max_tokens: maxTokens }),
+    body: JSON.stringify({ messages, mode, identity, moduleLabel }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -40,78 +44,15 @@ const COLORS = {
   red: "#E8594A",
 };
 
-const SYSTEM_ONBOARDING = `You are Meridian's Client Onboarding Assistant. Meridian is a mid-market SaaS platform for operations and workflow management.
-
-Your job is to guide a new client through onboarding in a warm, structured, efficient way. You help them:
-- Understand what they need to set up first
-- Identify blockers early
-- Feel confident about their progress
-
-Ask focused questions one or two at a time. Keep responses concise — 2-4 short paragraphs max. Use plain language. When appropriate, summarize next steps clearly. If they mention a blocker or confusion, flag it and suggest who can help.
-
-Start by greeting the user warmly BY NAME, acknowledging their role, and asking what brings them to Meridian and what their primary use case is. Since you already know who they are, do not ask for their name or role again.`;
-
-// Onboarding sub-mode instructions. Appended to the base identity block.
-const ONBOARDING_MODES = {
-  client: `MODE: CLIENT (self-guided onboarding)
-You are speaking directly with a new CLIENT of Meridian. An onboarding roadmap is displayed at the top of their screen with these steps: 1) Account Setup, 2) Invite Your Team, 3) Data Import, 4) Integrations, 5) Configuration & Preferences, 6) Build Your First Workflow, 7) Go-Live.
-Guide them through their onboarding:
-- Reference the roadmap steps by name
-- Help them understand what each step involves and what to tackle first
-- Surface blockers early and tell them who can help
-- Keep them feeling confident and oriented
-Start by greeting the user warmly BY NAME, acknowledging their role, briefly noting that their onboarding roadmap is shown above, and asking which part of the roadmap they have questions about. Do not ask for their name or role again.`,
-
-  copilot: `MODE: MERIDIAN TEAM — ONBOARDING CO-PILOT
-You are speaking with an INTERNAL Meridian team member (e.g. a CSM) who is prepping and tracking a CLIENT's onboarding. They are using you ABOUT a client, not AS the client.
-- Help them see where the client is in setup and what's outstanding
-- Surface likely blockers and suggest what to follow up on
-- Help them prep for calls and prioritize next actions for this account
-Start by greeting the team member BY NAME, acknowledging their role, referencing the client account they're working on if provided, and asking what they'd like to prep or review. Do not ask for their name or role again.`,
-
-  practice: `MODE: MERIDIAN TEAM — PRACTICE / TRAINING
-You are helping an INTERNAL Meridian team member LEARN the onboarding flow by role-playing. They want to practice running or experiencing onboarding so they can master it.
-- Offer to let them play either the client side or the CSM side
-- Walk them through the flow, pausing to explain why each step matters
-- Give constructive coaching as they practice
-Start by greeting the team member BY NAME, acknowledging their role, and asking whether they'd like to practice as the client or as the CSM, and which scenario they want to run. Do not ask for their name or role again.`,
-
-  shared: `MODE: MERIDIAN TEAM — SHARED SESSION (live client + CSM)
-You are facilitating a LIVE onboarding session where a Meridian CSM and their CLIENT are going through onboarding together on a call. Address both parties appropriately.
-- Keep the session moving and structured for both the CSM and the client
-- Surface next steps and blockers so both can see them
-- Make it easy for the CSM to guide while the client follows along
-Start by greeting both parties warmly, acknowledging the CSM BY NAME and welcoming the client account if provided, then set up the session by asking where they'd like to begin. Do not ask for the CSM's name or role again.`,
-};
-
-const SYSTEM_TRAINING = `You are Meridian's Training Needs Identifier. Your job is to help an enablement manager or team lead identify knowledge gaps and training priorities for their team.
-
-You conduct a structured discovery conversation. Ask about:
-- The team's role and key responsibilities
-- Which Meridian features or workflows they use most
-- Where they struggle or ask for help most often
-- Recent changes (new hires, new features, process changes)
-- How training has been delivered before and what worked
-
-Ask 1-2 questions at a time. Be conversational but purposeful. After gathering enough context (usually 4-6 exchanges), offer to summarize the top training needs and a suggested prioritization. Keep responses concise and practical.
-
-Start by greeting the user BY NAME, acknowledging their role, and asking which team they're looking to assess. Since you already know who they are, do not ask for their name or role again.`;
-
-// Training Needs sub-mode instructions, mirroring the onboarding structure.
-const TRAINING_MODES = {
-  client: `MODE: CLIENT — "What do I need to learn?"
-You are speaking with a CLIENT of Meridian who wants to figure out what they (or their own team) need to learn to use the platform effectively.
-- Help them identify which features and workflows matter most for their goals
-- Surface the gap between what they already know and what they'll need
-- Recommend a prioritized learning path and what to tackle first
-Start by greeting the user warmly BY NAME, acknowledging their role, and asking what they're trying to accomplish with Meridian and where they currently feel less confident. Do not ask for their name or role again.`,
-
-  team: `MODE: MERIDIAN TEAM — TRAINING CO-PILOT ("Help me identify what training to offer this client")
-You are speaking with an INTERNAL Meridian team member (e.g. a CSM or enablement manager) who wants to identify what training to offer or recommend to a specific CLIENT. They are using you ABOUT a client, not AS the client.
-- Help them assess where the client is likely under-adopting or struggling
-- Recommend specific training, resources, or sessions to offer the client
-- Prioritize what would move the client toward value fastest
-Start by greeting the team member BY NAME, acknowledging their role, referencing the client account if provided, and asking what they know about the client's current usage and goals. Do not ask for their name or role again.`,
+// Chat mode ids. The actual prompt text for each of these lives server-side
+// in api/chat.js — the browser only ever sends the id, never instructions.
+const MODE = {
+  ONBOARDING_CLIENT: "onboarding_client",
+  ONBOARDING_COPILOT: "onboarding_copilot",
+  ONBOARDING_PRACTICE: "onboarding_practice",
+  ONBOARDING_SHARED: "onboarding_shared",
+  TRAINING_CLIENT: "training_client",
+  TRAINING_TEAM: "training_team",
 };
 
 // Standard client onboarding roadmap, shown as a visual card in client onboarding.
@@ -125,58 +66,21 @@ const ONBOARDING_TEMPLATE = [
   { step: "Go-Live", detail: "Launch to your team and start running" },
 ];
 
-async function callClaude(messages, systemPrompt, identity) {
-  const plainTextRule =
-    "\n\nFormatting: Respond in plain, conversational text. Do not use Markdown of any kind — no #, ##, or ### headings; no ** or __ for bold; no asterisks or dashes as bullet points; and no --- divider lines. If you need to list items, write them as short sentences or separate them with line breaks, not bullet symbols.";
-  let fullSystem = systemPrompt + plainTextRule;
-  if (identity && identity.name) {
-    let idBlock =
-      `The person you are speaking with is ${identity.name}` +
-      (identity.role ? `, whose role is: ${identity.role}` : "") + `.`;
-    if (identity.company) {
-      idBlock += ` They are from the company: ${identity.company}.`;
-    }
-    if (identity.client) {
-      idBlock += ` The client account this session is about is: ${identity.client}.`;
-    }
-    idBlock += ` Greet them by name and tailor the conversation accordingly.\n\n`;
-    fullSystem = idBlock + systemPrompt + plainTextRule;
-  }
+async function callClaude(messages, mode, identity) {
   const outbound = messages.length > 0 ? messages : [{ role: "user", content: "Please begin the session." }];
-  const text = await callAPI(outbound, fullSystem, 1000);
+  const text = await callAPI(outbound, mode, identity);
   return text || "Sorry, I couldn't generate a response.";
 }
 
 // Asks the model to draft a Jira ticket from the conversation. Returns a parsed
 // object or throws. The agent DRAFTS only — a human submits.
 async function draftTicket(messages, identity) {
-  const sys = `You are drafting a Jira ticket based on a Meridian co-pilot conversation about a client. Capture the single most important blocker, action item, or follow-up from the conversation.
-
-Return ONLY valid JSON — no markdown, no code fences, no preamble. Use exactly this shape:
-{
-  "title": "concise, specific ticket title",
-  "type": "Task | Bug | Story",
-  "priority": "Low | Medium | High | Urgent",
-  "client": "the client account name",
-  "currentState": "2-4 sentences describing the situation today — the problem, gap, or blocker as it exists now",
-  "futureState": {
-    "as": "the role who benefits, e.g. 'onboarding client' or 'CSM'",
-    "need": "what they need to be able to do",
-    "soThat": "the outcome or benefit they get"
-  },
-  "acceptanceCriteria": [
-    { "actor": "User", "criterion": "an observable behavior the user can perform" },
-    { "actor": "System", "criterion": "a behavior the system must exhibit" }
-  ]
-}
-The client account is: ${identity.client || "Unknown"}. Choose type from Task, Bug, or Story as appropriate. Provide 2-4 acceptance criteria mixing User and System actors.`;
-
   const draftMessages = [
     ...messages,
     { role: "user", content: "Draft a Jira ticket capturing the key blocker or action item from our conversation. Return JSON only." },
   ];
 
-  let text = await callAPI(draftMessages, sys, 1200);
+  let text = await callAPI(draftMessages, "draft_ticket", identity);
   text = text.replace(/```json/gi, "").replace(/```/g, "").trim();
   return JSON.parse(text);
 }
@@ -184,22 +88,12 @@ The client account is: ${identity.client || "Unknown"}. Choose type from Task, B
 // Generates a session summary for the Meridian Team activity feed after a
 // client session. Returns a parsed object or throws.
 async function summarizeSession(messages, identity, moduleLabel) {
-  const sys = `You are summarizing a Meridian client self-service session so the client's account team (CSM) has awareness of it. The client is ${identity.name || "a client"}${identity.role ? `, role: ${identity.role}` : ""}. The session was in the "${moduleLabel}" tool.
-
-Return ONLY valid JSON — no markdown, no code fences, no preamble. Use exactly this shape:
-{
-  "topics": ["short topic", "short topic"],
-  "summary": "2-3 sentence summary of what the client explored and where they landed",
-  "blockers": ["any blocker or risk surfaced — omit or leave empty if none"],
-  "status": "Resolved | Needs follow-up | Blocker flagged"
-}`;
-
   const summaryMessages = [
     ...messages,
     { role: "user", content: "Summarize this session for my account team. Return JSON only." },
   ];
 
-  let text = await callAPI(summaryMessages, sys, 800);
+  let text = await callAPI(summaryMessages, "summarize_session", identity, moduleLabel);
   text = text.replace(/```json/gi, "").replace(/```/g, "").trim();
   return JSON.parse(text);
 }
@@ -427,7 +321,7 @@ function TicketModal({ ticket, error, onClose }) {
   );
 }
 
-function ChatInterface({ systemPrompt, placeholder, startLabel, internal, clientFieldLabel, canDraftTicket, template, onShareSummary, moduleLabel, companyField }) {
+function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLabel, canDraftTicket, template, onShareSummary, moduleLabel, companyField }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -471,13 +365,11 @@ function ChatInterface({ systemPrompt, placeholder, startLabel, internal, client
     missingFields.length === 1 ? missingFields[0] :
     missingFields.slice(0, -1).join(", ") + " and " + missingFields[missingFields.length - 1];
 
-  const activePrompt = systemPrompt;
-
   async function startConversation() {
     if (!formValid) return;
     setStarted(true);
     setLoading(true);
-    const reply = await callClaude([], activePrompt, identity);
+    const reply = await callClaude([], mode, identity);
     setMessages([{ role: "assistant", content: reply }]);
     setLoading(false);
   }
@@ -491,7 +383,7 @@ function ChatInterface({ systemPrompt, placeholder, startLabel, internal, client
     setMessages(newMessages);
     setInput("");
     setLoading(true);
-    const reply = await callClaude(newMessages, activePrompt, identity);
+    const reply = await callClaude(newMessages, mode, identity);
     setMessages([...newMessages, { role: "assistant", content: reply }]);
     setLoading(false);
   }
@@ -1033,7 +925,7 @@ const TAB_CONFIG = {
     {
       id: "client-onboarding",
       label: "Onboarding",
-      prompt: ONBOARDING_MODES.client,
+      mode: MODE.ONBOARDING_CLIENT,
       internal: false,
       shareable: true,
       moduleLabel: "Onboarding",
@@ -1045,7 +937,7 @@ const TAB_CONFIG = {
     {
       id: "client-training",
       label: "Training Needs",
-      prompt: TRAINING_MODES.client,
+      mode: MODE.TRAINING_CLIENT,
       internal: false,
       shareable: true,
       moduleLabel: "Training Needs",
@@ -1058,7 +950,7 @@ const TAB_CONFIG = {
     {
       id: "copilot",
       label: "Onboarding Co-pilot",
-      prompt: ONBOARDING_MODES.copilot,
+      mode: MODE.ONBOARDING_COPILOT,
       internal: true,
       canDraftTicket: true,
       clientField: "Client name / account",
@@ -1068,7 +960,7 @@ const TAB_CONFIG = {
     {
       id: "training-copilot",
       label: "Training Co-pilot",
-      prompt: TRAINING_MODES.team,
+      mode: MODE.TRAINING_TEAM,
       internal: true,
       canDraftTicket: true,
       clientField: "Client name / account",
@@ -1084,7 +976,7 @@ const TAB_CONFIG = {
     {
       id: "practice",
       label: "Practice",
-      prompt: ONBOARDING_MODES.practice,
+      mode: MODE.ONBOARDING_PRACTICE,
       internal: true,
       clientField: "Scenario / client",
       startLabel: "Onboarding Practice",
@@ -1093,7 +985,7 @@ const TAB_CONFIG = {
     {
       id: "shared",
       label: "Shared Session",
-      prompt: ONBOARDING_MODES.shared,
+      mode: MODE.ONBOARDING_SHARED,
       internal: true,
       clientField: "Client name / account",
       startLabel: "Shared Onboarding Session",
@@ -1529,7 +1421,7 @@ export default function App() {
           ) : (
             <ChatInterface
               key={`${viewAs}-${activeTab.id}`}
-              systemPrompt={activeTab.prompt}
+              mode={activeTab.mode}
               internal={activeTab.internal}
               clientFieldLabel={activeTab.clientField}
               canDraftTicket={activeTab.canDraftTicket}
