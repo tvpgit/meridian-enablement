@@ -203,70 +203,87 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // --- Rate limit before spending a cent on inference ---------------------
-  const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
-
-  if (usingRedis) {
-    const [ipRes, globalRes] = await Promise.all([
-      ipLimiter.limit(ip),
-      globalLimiter.limit("all"),
-    ]);
-    if (!ipRes.success) {
-      return res.status(429).json({ error: "Too many requests. Please wait a bit and try again." });
-    }
-    if (!globalRes.success) {
-      return res.status(429).json({ error: "Demo is at capacity for today. Please check back tomorrow." });
-    }
-  } else {
-    if (!memoryLimit(ip)) {
-      return res.status(429).json({ error: "Too many requests. Please wait a bit and try again." });
-    }
-    // No global backstop without Redis — logged so it's visible in Vercel's
-    // function logs that this deploy isn't fully protected yet.
-    console.warn("UPSTASH_REDIS_REST_URL/TOKEN not set — running with in-memory rate limiting only.");
-  }
-
-  // --- Validate & build the request, entirely server-side -----------------
-  const { messages: rawMessages, mode, identity: rawIdentity, moduleLabel: rawModuleLabel } = req.body || {};
-
-  const messages = sanitizeMessages(rawMessages);
-  if (!messages) {
-    return res.status(400).json({ error: "Missing or invalid messages" });
-  }
-
-  const identity = sanitizeIdentity(rawIdentity);
-  let system;
-  let maxTokens;
-
-  if (Object.prototype.hasOwnProperty.call(CHAT_MODES, mode)) {
-    system = buildIdBlock(identity) + CHAT_MODES[mode] + PLAIN_TEXT_RULE;
-    maxTokens = DEFAULT_CHAT_MAX_TOKENS;
-  } else if (mode === "draft_ticket") {
-    system = draftTicketSystem(identity);
-    maxTokens = MAX_TOKENS_BY_MODE.draft_ticket;
-  } else if (mode === "summarize_session") {
-    const moduleLabel = MODULE_LABELS.has(rawModuleLabel) ? rawModuleLabel : "Meridian";
-    system = summarizeSessionSystem(identity, moduleLabel);
-    maxTokens = MAX_TOKENS_BY_MODE.summarize_session;
-  } else {
-    return res.status(400).json({ error: "Unknown mode" });
-  }
-
+  // Top-level safety net: whatever goes wrong below — a Redis hiccup, a
+  // malformed body, an unexpected exception — this still sends a response.
+  // Without this, a thrown error anywhere in the function leaves the
+  // client's fetch hanging with no reply at all (the client-side timeout
+  // in App.js is the second half of this same fix).
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY, // lives only on Vercel's server
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-5",
-        max_tokens: maxTokens, // server-decided, caller can never override
-        system,
-        messages,
-      }),
-    });
+    // --- Rate limit before spending a cent on inference --------------------
+    const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
+
+    if (usingRedis) {
+      const [ipRes, globalRes] = await Promise.all([
+        ipLimiter.limit(ip),
+        globalLimiter.limit("all"),
+      ]);
+      if (!ipRes.success) {
+        return res.status(429).json({ error: "Too many requests. Please wait a bit and try again." });
+      }
+      if (!globalRes.success) {
+        return res.status(429).json({ error: "Demo is at capacity for today. Please check back tomorrow." });
+      }
+    } else {
+      if (!memoryLimit(ip)) {
+        return res.status(429).json({ error: "Too many requests. Please wait a bit and try again." });
+      }
+      // No global backstop without Redis — logged so it's visible in Vercel's
+      // function logs that this deploy isn't fully protected yet.
+      console.warn("UPSTASH_REDIS_REST_URL/TOKEN not set — running with in-memory rate limiting only.");
+    }
+
+    // --- Validate & build the request, entirely server-side -----------------
+    const { messages: rawMessages, mode, identity: rawIdentity, moduleLabel: rawModuleLabel } = req.body || {};
+
+    const messages = sanitizeMessages(rawMessages);
+    if (!messages) {
+      return res.status(400).json({ error: "Missing or invalid messages" });
+    }
+
+    const identity = sanitizeIdentity(rawIdentity);
+    let system;
+    let maxTokens;
+
+    if (Object.prototype.hasOwnProperty.call(CHAT_MODES, mode)) {
+      system = buildIdBlock(identity) + CHAT_MODES[mode] + PLAIN_TEXT_RULE;
+      maxTokens = DEFAULT_CHAT_MAX_TOKENS;
+    } else if (mode === "draft_ticket") {
+      system = draftTicketSystem(identity);
+      maxTokens = MAX_TOKENS_BY_MODE.draft_ticket;
+    } else if (mode === "summarize_session") {
+      const moduleLabel = MODULE_LABELS.has(rawModuleLabel) ? rawModuleLabel : "Meridian";
+      system = summarizeSessionSystem(identity, moduleLabel);
+      maxTokens = MAX_TOKENS_BY_MODE.summarize_session;
+    } else {
+      return res.status(400).json({ error: "Unknown mode" });
+    }
+
+    // 25s timeout on the upstream call — if Anthropic's API hangs, fail
+    // with a clear error rather than letting Vercel kill the function
+    // silently once its own execution limit is hit.
+    const controller = new AbortController();
+    const upstreamTimeout = setTimeout(() => controller.abort(), 25000);
+
+    let response;
+    try {
+      response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY, // lives only on Vercel's server
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-5",
+          max_tokens: maxTokens, // server-decided, caller can never override
+          system,
+          messages,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(upstreamTimeout);
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
@@ -278,6 +295,10 @@ export default async function handler(req, res) {
     const text = data.content?.[0]?.text || "";
     return res.status(200).json({ text });
   } catch (err) {
+    if (err.name === "AbortError") {
+      console.error("Upstream request timed out");
+      return res.status(504).json({ error: "The request took too long. Please try again." });
+    }
     console.error("Proxy error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }

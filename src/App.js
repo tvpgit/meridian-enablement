@@ -6,18 +6,32 @@ import { useState, useRef, useEffect } from "react";
 // value is owned by the server, so a caller hitting this endpoint directly
 // (curl, a script) can't supply its own instructions or an unbounded token
 // budget. See api/chat.js for the server-side prompt templates.
+//
+// A 30s client-side timeout backstops the server-side one: if the function
+// ever hangs instead of erroring, the UI fails fast with a retryable error
+// instead of spinning forever.
 async function callAPI(messages, mode, identity, moduleLabel) {
-  const response = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages, mode, identity, moduleLabel }),
-  });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || `Request failed: ${response.status}`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages, mode, identity, moduleLabel }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `Request failed: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.text || "";
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("Request timed out");
+    throw e;
+  } finally {
+    clearTimeout(timeout);
   }
-  const data = await response.json();
-  return data.text || "";
 }
 
 const MESSAGE_CAP = 10;
@@ -336,6 +350,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
   const [sharing, setSharing] = useState(false);
   const [shared, setShared] = useState(false);
   const [capReached, setCapReached] = useState(getMsgCount() >= MESSAGE_CAP);
+  const [error, setError] = useState(null);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -369,9 +384,15 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
     if (!formValid) return;
     setStarted(true);
     setLoading(true);
-    const reply = await callClaude([], mode, identity);
-    setMessages([{ role: "assistant", content: reply }]);
-    setLoading(false);
+    setError(null);
+    try {
+      const reply = await callClaude([], mode, identity);
+      setMessages([{ role: "assistant", content: reply }]);
+    } catch (e) {
+      setError("Couldn't reach Meridian. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function sendMessage() {
@@ -383,15 +404,38 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
     setMessages(newMessages);
     setInput("");
     setLoading(true);
-    const reply = await callClaude(newMessages, mode, identity);
-    setMessages([...newMessages, { role: "assistant", content: reply }]);
-    setLoading(false);
+    setError(null);
+    try {
+      const reply = await callClaude(newMessages, mode, identity);
+      setMessages([...newMessages, { role: "assistant", content: reply }]);
+    } catch (e) {
+      setError("Couldn't reach Meridian. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleKey(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  }
+
+  // Retries the last attempt, whether it was the initial greeting (messages
+  // still empty) or a follow-up (messages already includes the user's turn) —
+  // callClaude handles the empty case the same way startConversation does.
+  async function retryLast() {
+    if (loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const reply = await callClaude(messages, mode, identity);
+      setMessages(messages.length > 0 ? [...messages, { role: "assistant", content: reply }] : [{ role: "assistant", content: reply }]);
+    } catch (e) {
+      setError("Couldn't reach Meridian. Please try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -737,6 +781,40 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
             >
               <TypingIndicator />
             </div>
+          </div>
+        )}
+        {error && !loading && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              background: "rgba(232,89,74,0.12)",
+              border: `1px solid ${COLORS.red}`,
+              borderRadius: 10,
+              padding: "10px 14px",
+              marginBottom: 16,
+            }}
+          >
+            <span style={{ color: COLORS.red, fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>{error}</span>
+            <button
+              onClick={retryLast}
+              style={{
+                background: "transparent",
+                border: `1px solid ${COLORS.red}`,
+                borderRadius: 6,
+                padding: "5px 12px",
+                color: COLORS.red,
+                cursor: "pointer",
+                fontSize: 12,
+                fontFamily: "'DM Mono', monospace",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Try again
+            </button>
           </div>
         )}
         <div ref={bottomRef} />
