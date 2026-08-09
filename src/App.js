@@ -1423,8 +1423,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+         {/* Tabs */}
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 14, paddingTop: 14, borderTop: `1px solid ${COLORS.navyMid}` }}>
             {tabs.map((t) => {
               const on = t.id === activeTab.id;
               return (
