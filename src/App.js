@@ -371,7 +371,8 @@ function TicketModal({ ticket, error, onClose }) {
                 </div>
                 {editing && (
                   <div style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif", marginTop: 8, lineHeight: 1.45 }}>
-                    Added criteria are marked Proposed. The PM and dev team confirm at review whether each needs a corresponding User or System criterion.
+                    {/* Tabs */}
+Added criteria are marked Proposed. Adding or removing criteria can affect User and System coverage, so the PM and dev team confirm the final set at review.
                   </div>
                 )}
               </div>
