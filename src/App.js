@@ -186,17 +186,60 @@ function ChatMessage({ msg }) {
 }
 
 // Shared, self-contained ticket draft modal. Used by the co-pilot chat and the
-// Client Activity feed. Manages its own asset + submit state.
+// Client Activity feed. Manages its own asset + submit state. The user can edit
+// the draft (title, current state, future state, acceptance criteria) before
+// sending it, keeping a human fully in control of what goes to review.
 function TicketModal({ ticket, error, onClose }) {
   const [assetLink, setAssetLink] = useState("");
   const [assetFiles, setAssetFiles] = useState([]);
   const [submitted, setSubmitted] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [originalFuture, setOriginalFuture] = useState("");
   const fileInputRef = useRef(null);
+
+  // Editable working copy of the draft, seeded from the agent's draft.
+  const [draft, setDraft] = useState(null);
+  useEffect(() => {
+    if (!ticket) { setDraft(null); return; }
+    const fs = ticket.futureState;
+    const futureStateText = (fs && typeof fs === "object")
+      ? `As a ${fs.as}, I need to ${fs.need}, so that I can ${fs.soThat}.`
+      : (fs || "");
+    const criteria = Array.isArray(ticket.acceptanceCriteria)
+      ? ticket.acceptanceCriteria.map((c) => (typeof c === "object"
+          ? { actor: c.actor || "User", criterion: c.criterion || "" }
+          : { actor: "", criterion: String(c) }))
+      : [];
+    setDraft({
+      title: ticket.title || "",
+      currentState: ticket.currentState || "",
+      futureStateText,
+      acceptanceCriteria: criteria,
+    });
+    setOriginalFuture(futureStateText);
+  }, [ticket]);
 
   function handleFilePick(e) {
     const files = Array.from(e.target.files || []);
     if (files.length) setAssetFiles((prev) => [...prev, ...files.map((f) => f.name)]);
     e.target.value = "";
+  }
+
+  const inputStyle = {
+    width: "100%", background: COLORS.navyMid, border: `1px solid ${COLORS.amber}`,
+    borderRadius: 8, padding: "9px 12px", color: COLORS.white, fontFamily: "'DM Sans', sans-serif",
+    fontSize: 13, outline: "none", lineHeight: 1.5, resize: "vertical",
+  };
+  const labelStyle = { color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 };
+
+  function updateCriterion(i, val) {
+    setDraft((d) => ({ ...d, acceptanceCriteria: d.acceptanceCriteria.map((c, j) => j === i ? { ...c, criterion: val } : c) }));
+  }
+  function removeCriterion(i) {
+    setDraft((d) => ({ ...d, acceptanceCriteria: d.acceptanceCriteria.filter((_, j) => j !== i) }));
+  }
+  function addCriterion() {
+    setDraft((d) => ({ ...d, acceptanceCriteria: [...d.acceptanceCriteria, { actor: "Proposed", criterion: "" }] }));
   }
 
   return (
@@ -215,7 +258,7 @@ function TicketModal({ ticket, error, onClose }) {
           display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700,
             color: COLORS.amber, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            {submitted ? "Draft Sent to Jira" : "Draft Jira Ticket"}
+            {submitted ? "Draft Sent to Jira" : (editing ? "Edit Draft" : "Draft Jira Ticket")}
           </span>
           <button onClick={onClose} style={{ background: "transparent", border: "none",
             color: COLORS.slate, cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
@@ -226,38 +269,44 @@ function TicketModal({ ticket, error, onClose }) {
             <div style={{ color: "#E8594A", fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>{error}</div>
           )}
 
-          {ticket && !submitted && (
+          {ticket && draft && !submitted && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "62vh", overflowY: "auto" }}>
               <div>
-                <div style={{ color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Title</div>
-                <div style={{ color: COLORS.white, fontSize: 15, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>{ticket.title}</div>
+                <div style={labelStyle}>Title</div>
+                {editing ? (
+                  <input value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} style={inputStyle} />
+                ) : (
+                  <div style={{ color: COLORS.white, fontSize: 15, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>{draft.title}</div>
+                )}
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {[{ k: "Type", v: ticket.type }, { k: "Priority", v: ticket.priority }, { k: "Client", v: ticket.client }].map((f) => (
-                  <div key={f.k} style={{ background: COLORS.navyMid, borderRadius: 8, padding: "6px 10px" }}>
-                    <div style={{ color: COLORS.slate, fontSize: 9, fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase" }}>{f.k}</div>
-                    <div style={{ color: COLORS.white, fontSize: 13, fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>{f.v}</div>
+                {[{ k: "Type", v: ticket.type }, { k: "Priority", v: ticket.priority }, { k: "Client", v: ticket.client }].map((fld) => (
+                  <div key={fld.k} style={{ background: COLORS.navyMid, borderRadius: 8, padding: "6px 10px" }}>
+                    <div style={{ color: COLORS.slate, fontSize: 9, fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase" }}>{fld.k}</div>
+                    <div style={{ color: COLORS.white, fontSize: 13, fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>{fld.v}</div>
                   </div>
                 ))}
               </div>
               <div>
-                <div style={{ color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Current State</div>
-                <div style={{ color: COLORS.offwhite, fontSize: 13, lineHeight: 1.55, fontFamily: "'DM Sans', sans-serif" }}>{ticket.currentState}</div>
+                <div style={labelStyle}>Current State</div>
+                {editing ? (
+                  <textarea value={draft.currentState} onChange={(e) => setDraft((d) => ({ ...d, currentState: e.target.value }))} rows={3} style={inputStyle} />
+                ) : (
+                  <div style={{ color: COLORS.offwhite, fontSize: 13, lineHeight: 1.55, fontFamily: "'DM Sans', sans-serif" }}>{draft.currentState}</div>
+                )}
               </div>
               <div>
-                <div style={{ color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Future State</div>
-                <div style={{ background: COLORS.navyMid, borderRadius: 8, padding: "10px 12px", fontSize: 13, lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif", color: COLORS.offwhite }}>
-                  {ticket.futureState && typeof ticket.futureState === "object" ? (
-                    <span>
-                      <b style={{ color: COLORS.amber }}>As a</b> {ticket.futureState.as},{" "}
-                      <b style={{ color: COLORS.amber }}>I need to</b> {ticket.futureState.need},{" "}
-                      <b style={{ color: COLORS.amber }}>so that I can</b> {ticket.futureState.soThat}.
-                    </span>
-                  ) : (<span>{ticket.futureState}</span>)}
-                </div>
+                <div style={labelStyle}>Future State</div>
+                {editing ? (
+                  <textarea value={draft.futureStateText} onChange={(e) => setDraft((d) => ({ ...d, futureStateText: e.target.value }))} rows={3} style={inputStyle} />
+                ) : (
+                  <div style={{ background: COLORS.navyMid, borderRadius: 8, padding: "10px 12px", fontSize: 13, lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif", color: COLORS.offwhite }}>
+                    {draft.futureStateText}
+                  </div>
+                )}
               </div>
               <div>
-                <div style={{ color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Assets</div>
+                <div style={labelStyle}>Assets</div>
                 <input
                   value={assetLink}
                   onChange={(e) => setAssetLink(e.target.value)}
@@ -289,32 +338,66 @@ function TicketModal({ ticket, error, onClose }) {
                 )}
               </div>
               <div>
-                <div style={{ color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Acceptance Criteria</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div style={{ color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>Acceptance Criteria</div>
+                  {editing && (
+                    <button onClick={addCriterion} style={{ background: "transparent", border: "none", color: COLORS.amber, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>+ Add</button>
+                  )}
+                </div>
+                {editing && draft.futureStateText.trim() !== originalFuture.trim() && (
+                  <div style={{ background: "rgba(232,168,56,0.12)", border: `1px solid rgba(232,168,56,0.35)`, borderRadius: 8, padding: "8px 11px", marginBottom: 8, color: COLORS.amber, fontSize: 11, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.45 }}>
+                    You edited the Future State. Review the criteria below, some may no longer match the revised story, and confirm User and System coverage.
+                  </div>
+                )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {Array.isArray(ticket.acceptanceCriteria) && ticket.acceptanceCriteria.map((c, i) => {
-                    const actor = typeof c === "object" ? c.actor : null;
-                    const text = typeof c === "object" ? c.criterion : c;
+                  {draft.acceptanceCriteria.map((c, i) => {
+                    const actor = c.actor;
                     return (
                       <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                         {actor && (
-                          <span style={{ flexShrink: 0, background: actor.toLowerCase().startsWith("sys") ? "rgba(61,190,138,0.16)" : "rgba(232,168,56,0.16)", color: actor.toLowerCase().startsWith("sys") ? COLORS.green : COLORS.amber, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 700, marginTop: 1 }}>{actor}</span>
+                          <span style={{ flexShrink: 0, background: actor.toLowerCase().startsWith("sys") ? "rgba(61,190,138,0.16)" : actor.toLowerCase().startsWith("prop") ? "rgba(106,128,153,0.18)" : "rgba(232,168,56,0.16)", color: actor.toLowerCase().startsWith("sys") ? COLORS.green : actor.toLowerCase().startsWith("prop") ? COLORS.slateLight : COLORS.amber, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 700, marginTop: editing ? 8 : 1, textTransform: "uppercase" }}>{actor}</span>
                         )}
-                        <span style={{ color: COLORS.offwhite, fontSize: 13, lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif" }}>{text}</span>
+                        {editing ? (
+                          <div style={{ display: "flex", gap: 6, flex: 1, alignItems: "flex-start" }}>
+                            <textarea value={c.criterion} onChange={(e) => updateCriterion(i, e.target.value)} rows={2} style={{ ...inputStyle, fontSize: 12 }} />
+                            <button onClick={() => removeCriterion(i)} style={{ background: "transparent", border: "none", color: COLORS.slate, cursor: "pointer", fontSize: 16, flexShrink: 0, marginTop: 6 }}>×</button>
+                          </div>
+                        ) : (
+                          <span style={{ color: COLORS.offwhite, fontSize: 13, lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif" }}>{c.criterion}</span>
+                        )}
                       </div>
                     );
                   })}
                 </div>
+                {editing && (
+                  <div style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif", marginTop: 8, lineHeight: 1.45 }}>
+                    Added criteria are marked Proposed. The PM and dev team confirm at review whether each needs a corresponding User or System criterion.
+                  </div>
+                )}
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                <button onClick={() => setSubmitted(true)} style={{ flex: 1, background: COLORS.amber, color: COLORS.navy, border: "none", borderRadius: 9, padding: "11px 16px", fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: "0.03em" }}>
-                  Send draft to Jira →
-                </button>
-                <button onClick={onClose} style={{ background: "transparent", color: COLORS.slate, border: `1px solid ${COLORS.navyMid}`, borderRadius: 9, padding: "11px 16px", fontFamily: "'DM Mono', monospace", fontSize: 13, cursor: "pointer" }}>
-                  Discard
-                </button>
-              </div>
+              {editing ? (
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <button onClick={() => setEditing(false)} style={{ flex: 1, background: COLORS.amber, color: COLORS.navy, border: "none", borderRadius: 9, padding: "11px 16px", fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: "0.03em" }}>
+                    Save changes
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <button onClick={() => setSubmitted(true)} style={{ flex: 1, background: COLORS.amber, color: COLORS.navy, border: "none", borderRadius: 9, padding: "11px 16px", fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: "0.03em" }}>
+                    Send draft to Jira →
+                  </button>
+                  <button onClick={() => setEditing(true)} style={{ background: "transparent", color: COLORS.amber, border: `1px solid ${COLORS.amber}`, borderRadius: 9, padding: "11px 16px", fontFamily: "'DM Mono', monospace", fontSize: 13, cursor: "pointer" }}>
+                    Edit
+                  </button>
+                  <button onClick={onClose} style={{ background: "transparent", color: COLORS.slate, border: `1px solid ${COLORS.navyMid}`, borderRadius: 9, padding: "11px 16px", fontFamily: "'DM Mono', monospace", fontSize: 13, cursor: "pointer" }}>
+                    Discard
+                  </button>
+                </div>
+              )}
               <div style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif", textAlign: "center", lineHeight: 1.4 }}>
-                In production the app posts this draft to Jira via API in a review status; a product manager reviews and approves it in Jira before it becomes active.
+                {editing
+                  ? "Refine any field, the agent drafts, but you decide what goes to review."
+                  : "In production the app posts this draft to Jira via API in a review status; a product manager reviews and approves it in Jira before it becomes active."}
               </div>
             </div>
           )}
@@ -334,7 +417,6 @@ function TicketModal({ ticket, error, onClose }) {
     </div>
   );
 }
-
 function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLabel, canDraftTicket, template, onShareSummary, moduleLabel, companyField }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
