@@ -1342,6 +1342,7 @@ export default function App() {
   const [viewAs, setViewAs] = useState("client");
   const [tabId, setTabId] = useState(TAB_CONFIG.client[0].id);
   const [activities, setActivities] = useState([]);
+  const [seenCount, setSeenCount] = useState(0);
   const [aboutOpen, setAboutOpen] = useState(false);
 
   const tabs = TAB_CONFIG[viewAs];
@@ -1513,7 +1514,10 @@ export default function App() {
               return (
                 <button
                   key={t.id}
-                  onClick={() => setTabId(t.id)}
+                  onClick={() => {
+                    setTabId(t.id);
+                    if (t.type === "feed") setSeenCount(activities.length);
+                  }}
                   style={{
                     background: on ? COLORS.navyMid : "transparent",
                     border: "none",
@@ -1534,14 +1538,14 @@ export default function App() {
                   }}
                 >
                   {t.label}
-                  {t.type === "feed" && activities.length > 0 && (
+                  {t.type === "feed" && (activities.length - seencount) > 0 && (
                     <span style={{
                       background: COLORS.amber, color: COLORS.navy, borderRadius: 999,
                       minWidth: 18, height: 18, padding: "0 5px", fontSize: 10, fontWeight: 700,
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
                       fontFamily: "'DM Mono', monospace",
                     }}>
-                      {activities.length}
+                      {activities.length - seencount}
                     </span>
                   )}
                 </button>
