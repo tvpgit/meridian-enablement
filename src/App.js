@@ -1538,14 +1538,14 @@ export default function App() {
                   }}
                 >
                   {t.label}
-                  {t.type === "feed" && (activities.length - seencount) > 0 && (
+                  {t.type === "feed" && (activities.length - seenCount) > 0 && (
                     <span style={{
                       background: COLORS.amber, color: COLORS.navy, borderRadius: 999,
                       minWidth: 18, height: 18, padding: "0 5px", fontSize: 10, fontWeight: 700,
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
                       fontFamily: "'DM Mono', monospace",
                     }}>
-                      {activities.length - seencount}
+                      {activities.length - seenCount}
                     </span>
                   )}
                 </button>
