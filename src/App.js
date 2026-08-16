@@ -1213,6 +1213,7 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
   }
   async function draftFromActivity(a) {
     if (draftingId) return;
+    if (!teamMember.trim()) { setNameError(true); return; }
     setDraftingId(a.id);
     setTicketError(null);
     // Build synthetic conversation context from the session summary.
@@ -1230,12 +1231,18 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
     try {
       const draft = await draftTicket(synth, identity);
       setTicket({ ...draft, labels });
+      onMarkHandled(a.id, { type: "ticket", by: teamMember.trim(), at: Date.now() });
     } catch (e) {
       setTicketError("Couldn't draft the ticket from this session. Please try again.");
       setTicket({ title: "Draft unavailable", type: "Task", priority: "Medium", client: a.company || a.client, currentState: a.summary, futureState: "", acceptanceCriteria: [], labels });
     } finally {
       setDraftingId(null);
     }
+  }
+  function logOutreach(a, channel) {
+    if (!teamMember.trim()) { setNameError(true); return; }
+    onMarkHandled(a.id, { type: "outreach", channel, by: teamMember.trim(), at: Date.now() });
+    setOutreachFor(null);
   }
   function timeAgo(t) {
     const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
@@ -1363,27 +1370,49 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
                 )}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                   <span style={{ background: sc.bg, color: sc.fg, borderRadius: 6, padding: "3px 10px", fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{a.status}</span>
-                  {needsTicket(a.status) && (
-                    <button
-                      onClick={() => draftFromActivity(a)}
-                      disabled={draftingId === a.id}
-                      style={{
-                        background: "transparent",
-                        border: `1px solid ${COLORS.amber}`,
-                        borderRadius: 8,
-                        padding: "6px 12px",
-                        color: COLORS.amber,
-                        cursor: draftingId === a.id ? "default" : "pointer",
-                        fontSize: 11,
-                        fontFamily: "'DM Mono', monospace",
-                        fontWeight: 600,
-                        letterSpacing: "0.03em",
-                        opacity: draftingId === a.id ? 0.6 : 1,
-                      }}
-                    >
-                      {draftingId === a.id ? "Drafting…" : "⊕ Draft ticket from this session"}
-                    </button>
-                  )}
+                  {a.handled ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(61,190,138,0.14)", color: COLORS.green, borderRadius: 8, padding: "5px 11px", fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                      ✓ {a.handled.type === "ticket" ? "Ticket drafted" : `Followed up via ${a.handled.channel}`} by {a.handled.by}
+                    </span>
+                  ) : needsTicket(a.status) ? (
+                    outreachFor === a.id ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>Logged via:</span>
+                        {["Email", "Slack", "Call"].map((ch) => (
+                          <button key={ch} onClick={() => logOutreach(a, ch)} style={{ background: "transparent", border: `1px solid ${COLORS.slate}`, borderRadius: 7, padding: "5px 10px", color: COLORS.offwhite, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{ch}</button>
+                        ))}
+                        <button onClick={() => setOutreachFor(null)} style={{ background: "transparent", border: "none", color: COLORS.slate, cursor: "pointer", fontSize: 14 }}>×</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <button
+                          onClick={() => { if (!teamMember.trim()) { setNameError(true); return; } setOutreachFor(a.id); }}
+                          style={{ background: "transparent", border: `1px solid ${COLORS.slate}`, borderRadius: 8, padding: "6px 12px", color: COLORS.slateLight, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, letterSpacing: "0.03em" }}
+                        >
+                          ✉ Log outreach
+                        </button>
+                        <button
+                          onClick={() => draftFromActivity(a)}
+                          disabled={draftingId === a.id}
+                          style={{
+                            background: "transparent",
+                            border: `1px solid ${COLORS.amber}`,
+                            borderRadius: 8,
+                            padding: "6px 12px",
+                            color: COLORS.amber,
+                            cursor: draftingId === a.id ? "default" : "pointer",
+                            fontSize: 11,
+                            fontFamily: "'DM Mono', monospace",
+                            fontWeight: 600,
+                            letterSpacing: "0.03em",
+                            opacity: draftingId === a.id ? 0.6 : 1,
+                          }}
+                        >
+                          {draftingId === a.id ? "Drafting…" : "⊕ Draft ticket from this session"}
+                        </button>
+                      </div>
+                    )
+                  ) : null}
                 </div>
               </div>
             );
