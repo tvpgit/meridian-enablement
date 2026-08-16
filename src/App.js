@@ -195,6 +195,7 @@ function TicketModal({ ticket, error, onClose }) {
   const [submitted, setSubmitted] = useState(false);
   const [editing, setEditing] = useState(false);
   const [originalFuture, setOriginalFuture] = useState("");
+  const [labelInput, setLabelInput] = useState("");
   const fileInputRef = useRef(null);
 
   // Editable working copy of the draft, seeded from the agent's draft.
@@ -215,6 +216,7 @@ function TicketModal({ ticket, error, onClose }) {
       currentState: ticket.currentState || "",
       futureStateText,
       acceptanceCriteria: criteria,
+      labels: Array.isArray(ticket.labels) ? ticket.labels.slice() : [],
     });
     setOriginalFuture(futureStateText);
   }, [ticket]);
@@ -240,6 +242,15 @@ function TicketModal({ ticket, error, onClose }) {
   }
   function addCriterion() {
     setDraft((d) => ({ ...d, acceptanceCriteria: [...d.acceptanceCriteria, { actor: "Proposed", criterion: "" }] }));
+  }
+  function removeLabel(i) {
+    setDraft((d) => ({ ...d, labels: d.labels.filter((_, j) => j !== i) }));
+  }
+  function addLabel() {
+    const v = labelInput.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    if (!v) return;
+    setDraft((d) => d.labels.includes(v) ? d : ({ ...d, labels: [...d.labels, v] }));
+    setLabelInput("");
   }
 
   return (
@@ -287,6 +298,33 @@ function TicketModal({ ticket, error, onClose }) {
                   </div>
                 ))}
               </div>
+              {(editing || draft.labels.length > 0) && (
+                <div>
+                  <div style={labelStyle}>Labels</div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                    {draft.labels.map((lb, i) => (
+                      <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: COLORS.navyMid, color: COLORS.slateLight, borderRadius: 6, padding: "3px 9px", fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                        {lb}
+                        {editing && (
+                          <button onClick={() => removeLabel(i)} style={{ background: "transparent", border: "none", color: COLORS.slate, cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
+                        )}
+                      </span>
+                    ))}
+                    {editing && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <input
+                          value={labelInput}
+                          onChange={(e) => setLabelInput(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLabel(); } }}
+                          placeholder="add label"
+                          style={{ background: COLORS.navyMid, border: `1px solid ${COLORS.amber}`, borderRadius: 6, padding: "3px 8px", color: COLORS.white, fontFamily: "'DM Mono', monospace", fontSize: 11, outline: "none", width: 90 }}
+                        />
+                        <button onClick={addLabel} style={{ background: "transparent", border: "none", color: COLORS.amber, cursor: "pointer", fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>+ Add</button>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div>
                 <div style={labelStyle}>Current State</div>
                 {editing ? (
@@ -1181,12 +1219,18 @@ function ActivityFeed({ activities }) {
       content: `Draft a Jira ticket for this client session. Client: ${a.client || "Unknown"}${a.company ? ` (${a.company})` : ""}. Module: ${a.module}. Summary: ${a.summary} Topics: ${(a.topics || []).join(", ") || "n/a"}. Blockers: ${(a.blockers || []).join("; ") || "none"}. Status: ${a.status}.`,
     }];
     const identity = { name: a.client, role: a.role, company: a.company, client: a.company || a.client };
+    const slug = (s) => String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const labels = [];
+    (a.topics || []).forEach((t) => { const x = slug(t); if (x && !labels.includes(x)) labels.push(x); });
+    const st = (a.status || "").toLowerCase();
+    if (st.includes("block")) labels.push("blocker");
+    else if (st.includes("follow")) labels.push("needs-follow-up");
     try {
       const draft = await draftTicket(synth, identity);
-      setTicket(draft);
+      setTicket({ ...draft, labels });
     } catch (e) {
       setTicketError("Couldn't draft the ticket from this session. Please try again.");
-      setTicket({ title: "Draft unavailable", type: "Task", priority: "Medium", client: a.company || a.client, currentState: a.summary, futureState: "", acceptanceCriteria: [] });
+      setTicket({ title: "Draft unavailable", type: "Task", priority: "Medium", client: a.company || a.client, currentState: a.summary, futureState: "", acceptanceCriteria: [], labels });
     } finally {
       setDraftingId(null);
     }
