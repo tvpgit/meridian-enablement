@@ -1212,18 +1212,6 @@ function ActivityFeed({ activities }) {
     return { total, clients, flagged, blockers, topModule };
   })();
 
-  // Computed rollup of the feed so far (no AI call, just tallies).
-  const summary = (() => {
-    const total = activities.length;
-    const clients = new Set(activities.map((a) => a.company || a.client).filter(Boolean)).size;
-    const flagged = activities.filter((a) => needsTicket(a.status)).length;
-    const blockers = activities.filter((a) => (a.status || "").toLowerCase().includes("block")).length;
-    const moduleCounts = {};
-    activities.forEach((a) => { if (a.module) moduleCounts[a.module] = (moduleCounts[a.module] || 0) + 1; });
-    let topModule = null, topN = 0;
-    Object.keys(moduleCounts).forEach((m) => { if (moduleCounts[m] > topN) { topN = moduleCounts[m]; topModule = m; } });
-    return { total, clients, flagged, blockers, topModule };
-  })();
   return (
     <div style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px" }}>
