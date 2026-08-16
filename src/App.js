@@ -1193,10 +1193,12 @@ const TAB_CONFIG = {
   ],
 };
 
-function ActivityFeed({ activities }) {
+function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) {
   const [ticket, setTicket] = useState(null);
   const [ticketError, setTicketError] = useState(null);
   const [draftingId, setDraftingId] = useState(null);
+  const [outreachFor, setOutreachFor] = useState(null);
+  const [nameError, setNameError] = useState(false);
 
   function statusColor(status) {
     const s = (status || "").toLowerCase();
@@ -1265,6 +1267,22 @@ function ActivityFeed({ activities }) {
         fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5,
       }}>
                 In production, this feed is populated automatically — client sessions log to the account record via HubSpot and the backend, so the whole account team stays aware without anyone sharing manually.
+      </div>
+
+      <div style={{
+        background: COLORS.navyLight, border: `1px solid ${nameError ? "#E8594A" : COLORS.navyMid}`, borderRadius: 10,
+        padding: "10px 14px", marginBottom: 18, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+      }}>
+        <span style={{ color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0 }}>Acting as</span>
+        <input
+          value={teamMember}
+          onChange={(e) => { setTeamMember(e.target.value); if (e.target.value.trim()) setNameError(false); }}
+          placeholder="your name"
+          style={{ flex: 1, minWidth: 120, background: COLORS.navyMid, border: "none", borderRadius: 6, padding: "6px 10px", color: COLORS.white, fontFamily: "'DM Sans', sans-serif", fontSize: 13, outline: "none" }}
+        />
+        <span style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif", flexBasis: "100%", lineHeight: 1.4 }}>
+          {nameError ? "Enter your name so actions can be attributed." : "In production this is your authenticated HubSpot identity, so every action is automatically attributed."}
+        </span>
       </div>
 
       {activities.length > 0 && (
@@ -1428,6 +1446,7 @@ export default function App() {
   const [tabId, setTabId] = useState(TAB_CONFIG.client[0].id);
   const [activities, setActivities] = useState([]);
   const [seenCount, setSeenCount] = useState(0);
+  const [teamMember, setTeamMember] = useState("");
   const [aboutOpen, setAboutOpen] = useState(false);
 
   const tabs = TAB_CONFIG[viewAs];
@@ -1440,6 +1459,10 @@ export default function App() {
 
   function addActivity(entry) {
     setActivities((prev) => [{ ...entry, id: Date.now() }, ...prev]);
+  }
+
+  function markHandled(id, handled) {
+    setActivities((prev) => prev.map((a) => a.id === id ? { ...a, handled } : a));
   }
 
   return (
@@ -1667,7 +1690,7 @@ export default function App() {
         {/* Chat / feed area */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {activeTab.type === "feed" ? (
-            <ActivityFeed activities={activities} />
+            <ActivityFeed activities={activities} teamMember={teamMember} setTeamMember={setTeamMember} onMarkHandled={markHandled} />
           ) : (
             <ChatInterface
               key={`${viewAs}-${activeTab.id}`}
