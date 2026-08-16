@@ -1198,6 +1198,32 @@ function ActivityFeed({ activities }) {
     const hrs = Math.round(mins / 60);
     return `${hrs}h ago`;
   }
+
+  // Computed rollup of the feed so far (no AI call, just tallies).
+  const summary = (() => {
+    const total = activities.length;
+    const clients = new Set(activities.map((a) => a.company || a.client).filter(Boolean)).size;
+    const flagged = activities.filter((a) => needsTicket(a.status)).length;
+    const blockers = activities.filter((a) => (a.status || "").toLowerCase().includes("block")).length;
+    const moduleCounts = {};
+    activities.forEach((a) => { if (a.module) moduleCounts[a.module] = (moduleCounts[a.module] || 0) + 1; });
+    let topModule = null, topN = 0;
+    Object.keys(moduleCounts).forEach((m) => { if (moduleCounts[m] > topN) { topN = moduleCounts[m]; topModule = m; } });
+    return { total, clients, flagged, blockers, topModule };
+  })();
+
+  // Computed rollup of the feed so far (no AI call, just tallies).
+  const summary = (() => {
+    const total = activities.length;
+    const clients = new Set(activities.map((a) => a.company || a.client).filter(Boolean)).size;
+    const flagged = activities.filter((a) => needsTicket(a.status)).length;
+    const blockers = activities.filter((a) => (a.status || "").toLowerCase().includes("block")).length;
+    const moduleCounts = {};
+    activities.forEach((a) => { if (a.module) moduleCounts[a.module] = (moduleCounts[a.module] || 0) + 1; });
+    let topModule = null, topN = 0;
+    Object.keys(moduleCounts).forEach((m) => { if (moduleCounts[m] > topN) { topN = moduleCounts[m]; topModule = m; } });
+    return { total, clients, flagged, blockers, topModule };
+  })();
   return (
     <div style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px" }}>
@@ -1206,8 +1232,35 @@ function ActivityFeed({ activities }) {
         padding: "10px 14px", marginBottom: 18, color: COLORS.slate, fontSize: 12,
         fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5,
       }}>
-        In production, this feed is populated automatically — client sessions log to the account record via HubSpot and the backend, so the whole account team stays aware without anyone sharing manually.
+                In production, this feed is populated automatically — client sessions log to the account record via HubSpot and the backend, so the whole account team stays aware without anyone sharing manually.
       </div>
+
+      {activities.length > 0 && (
+        <div style={{
+          background: COLORS.navyLight, border: `1px solid ${COLORS.navyMid}`, borderRadius: 10,
+          padding: "12px 14px", marginBottom: 18,
+        }}>
+          <div style={{ color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Activity Summary</div>
+          <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+            {[
+              { n: summary.total, label: summary.total === 1 ? "session" : "sessions" },
+              { n: summary.clients, label: summary.clients === 1 ? "client" : "clients" },
+              { n: summary.flagged, label: "flagged", accent: summary.flagged > 0 },
+              { n: summary.blockers, label: summary.blockers === 1 ? "blocker" : "blockers", accent: summary.blockers > 0 },
+            ].map((s, i) => (
+              <div key={i} style={{ display: "flex", flexDirection: "column" }}>
+                <span style={{ color: s.accent ? COLORS.amber : COLORS.white, fontSize: 20, fontWeight: 700, fontFamily: "'DM Mono', monospace", lineHeight: 1 }}>{s.n}</span>
+                <span style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif", marginTop: 3 }}>{s.label}</span>
+              </div>
+            ))}
+          </div>
+          {summary.topModule && (
+            <div style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif", marginTop: 10, lineHeight: 1.4 }}>
+              Most active area: <span style={{ color: COLORS.slateLight, fontWeight: 600 }}>{summary.topModule}</span>{summary.flagged > 0 ? `. ${summary.flagged} ${summary.flagged === 1 ? "session needs" : "sessions need"} follow-up.` : "."}
+            </div>
+          )}
+        </div>
+      )}
 
       {activities.length === 0 ? (
         <div style={{
