@@ -1256,8 +1256,8 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
   const summary = (() => {
     const total = activities.length;
     const clients = new Set(activities.map((a) => a.company || a.client).filter(Boolean)).size;
-    const flagged = activities.filter((a) => needsTicket(a.status)).length;
-    const blockers = activities.filter((a) => (a.status || "").toLowerCase().includes("block")).length;
+    const flagged = activities.filter((a) => needsTicket(a.status) && !a.handled).length;
+    const blockers = activities.filter((a) => (a.status || "").toLowerCase().includes("block") && !a.handled).length;
     const moduleCounts = {};
     activities.forEach((a) => { if (a.module) moduleCounts[a.module] = (moduleCounts[a.module] || 0) + 1; });
     let topModule = null, topN = 0;
