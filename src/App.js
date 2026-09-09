@@ -1018,7 +1018,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
           </label>
           <span style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif" }}>
             {shared
-              ? "They'll see a summary of this session in their Client Activity feed. Subsequent chats you make in this session will not be shared. Click the 'Reset conversation' icon below to start a new chat session."
+              ? "Your Meridian Team will see a summary of this session in their Client Activity feed. Subsequent chats you make in this session will not be shared. Click the 'Reset conversation' icon below to start a new chat session."
               : "When you're done chatting, check the box to share your session with your Meridian Team. Once you check the box, subsequent chats you make in this session will not be shared. Click the 'Reset conversation' icon below to start a new chat session."}
           </span>
         </div>
