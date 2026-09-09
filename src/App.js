@@ -477,7 +477,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
   const [ticketLoading, setTicketLoading] = useState(false);
   const [ticketError, setTicketError] = useState(null);
   const [sharing, setSharing] = useState(false);
-  const [sharedCount, setSharedCount] = useState(0);
+  const [shared, setShared] = useState(false);
   const [capReached, setCapReached] = useState(getMsgCount() >= MESSAGE_CAP);
   const [error, setError] = useState(null);
   const bottomRef = useRef(null);
@@ -589,7 +589,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
   }
 
   async function handleShareSummary() {
-    if (sharing || !onShareSummary || messages.length === 0 || messages.length === sharedCount) return;
+    if (sharing || shared || !onShareSummary || messages.length === 0) return;
     setSharing(true);
     let entry;
     try {
@@ -619,7 +619,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
     }
     onShareSummary(entry);
     setSharing(false);
-    setSharedCount(messages.length);
+    setShared(true);
   }
 
   function reset() {
@@ -633,7 +633,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
     setTicket(null);
     setTicketError(null);
     setSharing(false);
-    setSharedCount(0);
+    setShared(false);
   }
 
   if (!started) {
@@ -987,9 +987,11 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
         </div>
       )}
 
-      {/* Share session with team (client modes only). Gated on an actual
-          client message, not just the assistant's opening greeting, so the
-          button doesn't appear before there's anything worth sharing. */}
+      {/* Share with team (client modes only). Gated on an actual client
+          message, not just the assistant's opening greeting. A deliberate,
+          one-time action: checking the box shares the conversation as it
+          stands. It isn't a live, continuously-updating share, so it's
+          meant to be checked once, when the client is done chatting. */}
       {onShareSummary && messages.some((m) => m.role === "user") && (
         <div
           style={{
@@ -1002,40 +1004,23 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
             background: COLORS.navyLight,
           }}
         >
-          {sharedCount > 0 && (
-            <span style={{ color: COLORS.green, fontSize: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
-              ✓ Shared with your team — they'll see a summary in their Client Activity feed.
+          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: sharing || shared ? "default" : "pointer", flexShrink: 0 }}>
+            <input
+              type="checkbox"
+              checked={shared}
+              disabled={sharing || shared}
+              onChange={(e) => { if (e.target.checked) handleShareSummary(); }}
+              style={{ accentColor: COLORS.amber, cursor: sharing || shared ? "default" : "pointer" }}
+            />
+            <span style={{ color: shared ? COLORS.green : COLORS.slateLight, fontSize: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
+              {sharing ? "Sharing…" : shared ? "✓ Shared with your team" : "Share with my team"}
             </span>
-          )}
-          {messages.length > sharedCount && (
-            <>
-              <button
-                onClick={handleShareSummary}
-                disabled={sharing}
-                style={{
-                  background: "transparent",
-                  border: `1px solid ${COLORS.amber}`,
-                  borderRadius: 8,
-                  padding: "7px 14px",
-                  color: COLORS.amber,
-                  cursor: sharing ? "default" : "pointer",
-                  fontSize: 12,
-                  fontFamily: "'DM Mono', monospace",
-                  fontWeight: 600,
-                  letterSpacing: "0.03em",
-                  transition: "all 0.2s",
-                  opacity: sharing ? 0.6 : 1,
-                }}
-              >
-                {sharing ? "Sharing…" : sharedCount === 0 ? "⇧ Share session with my team" : "⇧ Share what's new since last time"}
-              </button>
-              <span style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif" }}>
-                {sharedCount === 0
-                  ? "This shares what you've said so far, not future messages. You can share again any time to include what's new."
-                  : "Your onboarding team can see an updated summary of this session."}
-              </span>
-            </>
-          )}
+          </label>
+          <span style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif" }}>
+            {shared
+              ? "They'll see a summary of this session in their Client Activity feed."
+              : "When you're done chatting, check this box to share your session with your Meridian Team. Leave it unchecked if you'd rather not share."}
+          </span>
         </div>
       )}
 
