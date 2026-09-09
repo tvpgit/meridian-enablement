@@ -1276,7 +1276,9 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
                 In production, this feed is populated automatically — client sessions log to the account record via HubSpot and the backend, so the whole account team stays aware without anyone sharing manually.
       </div>
 
-      <div style={{
+      <div
+        data-coach-target="acting-as"
+        style={{
         background: COLORS.navyLight, border: `1px solid ${nameError ? "#E8594A" : COLORS.navyMid}`, borderRadius: 10,
         padding: "10px 14px", marginBottom: 18, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
       }}>
@@ -1293,7 +1295,9 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
       </div>
 
       {activities.length > 0 && (
-        <div style={{
+        <div
+          data-coach-target="summary-bar"
+          style={{
           background: COLORS.navyLight, border: `1px solid ${COLORS.navyMid}`, borderRadius: 10,
           padding: "12px 14px", marginBottom: 18,
         }}>
@@ -1320,7 +1324,9 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
       )}
 
       {activities.length === 0 ? (
-        <div style={{
+        <div
+          data-coach-target="feed-actions"
+          style={{
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           textAlign: "center", padding: "48px 24px", gap: 10,
         }}>
@@ -1333,7 +1339,7 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
           </div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div data-coach-target="feed-actions" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {activities.map((a) => {
             const sc = statusColor(a.status);
             return (
@@ -1470,6 +1476,299 @@ function AboutModal({ onClose }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Guided onboarding coach-mark tour
+// ---------------------------------------------------------------------------
+// Tracks the on-screen position of a `[data-coach-target="…"]` element so
+// CoachMark can anchor a bubble + highlight ring to it. Re-measures on
+// mount, on resize, and on scroll (capture phase, so it also catches
+// scrolling inside the chat/feed panes, not just the window).
+function useTargetRect(selector, active) {
+  const [rect, setRect] = useState(null);
+  useEffect(() => {
+    if (!active || !selector) {
+      setRect(null);
+      return;
+    }
+    function measure() {
+      const el = document.querySelector(selector);
+      setRect(el ? el.getBoundingClientRect() : null);
+    }
+    measure();
+    // Layout can settle a beat after a tab/persona switch (fonts, wrap), so
+    // take one more measurement shortly after mount.
+    const t = setTimeout(measure, 60);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [selector, active]);
+  return rect;
+}
+
+const COACH_BUBBLE_WIDTH = 300;
+const COACH_GAP = 14;
+
+// One step: { id, target (CSS selector), placement ('bottom'|'top'|'left'|'right'), title, body }
+// If `target` doesn't resolve to an element (e.g. the Activity Summary
+// hasn't rendered yet because there's no activity), CoachMark falls back to
+// a centered bubble with no highlight rather than breaking the tour.
+function CoachMark({ steps, stepIndex, onNext, onBack, onSkip, onFinish }) {
+  const step = steps[stepIndex];
+  const rect = useTargetRect(step?.target, !!step);
+
+  if (!step) return null;
+
+  const isFirst = stepIndex === 0;
+  const isLast = stepIndex === steps.length - 1;
+  const placement = step.placement || "bottom";
+
+  let bubbleStyle = {
+    position: "fixed",
+    zIndex: 999,
+    width: COACH_BUBBLE_WIDTH,
+    maxWidth: "calc(100vw - 32px)",
+  };
+  let arrowStyle = null;
+
+  if (rect) {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (placement === "bottom" || placement === "top") {
+      let left = rect.left + rect.width / 2 - COACH_BUBBLE_WIDTH / 2;
+      left = Math.max(16, Math.min(left, vw - COACH_BUBBLE_WIDTH - 16));
+      const arrowLeft = Math.max(28, Math.min(rect.left + rect.width / 2 - 7, vw - 28));
+      bubbleStyle.left = left;
+      if (placement === "bottom") {
+        bubbleStyle.top = rect.bottom + COACH_GAP;
+        arrowStyle = { top: rect.bottom + COACH_GAP - 7, left: arrowLeft, borderLeft: `1px solid ${COLORS.amber}`, borderTop: `1px solid ${COLORS.amber}` };
+      } else {
+        bubbleStyle.top = rect.top - COACH_GAP;
+        bubbleStyle.transform = "translateY(-100%)";
+        arrowStyle = { top: rect.top - COACH_GAP - 7, left: arrowLeft, borderRight: `1px solid ${COLORS.amber}`, borderBottom: `1px solid ${COLORS.amber}` };
+      }
+    } else if (placement === "left" || placement === "right") {
+      const top = Math.max(16, Math.min(rect.top + rect.height / 2 - 90, vh - 200));
+      bubbleStyle.top = top;
+      const arrowTop = Math.max(16, Math.min(rect.top + rect.height / 2 - 7, vh - 22));
+      if (placement === "right") {
+        bubbleStyle.left = rect.right + COACH_GAP;
+        arrowStyle = { top: arrowTop, left: rect.right + COACH_GAP - 7, borderLeft: `1px solid ${COLORS.amber}`, borderBottom: `1px solid ${COLORS.amber}` };
+      } else {
+        bubbleStyle.left = rect.left - COACH_GAP - COACH_BUBBLE_WIDTH;
+        bubbleStyle.left = Math.max(16, bubbleStyle.left);
+        arrowStyle = { top: arrowTop, left: rect.left - COACH_GAP - 7, borderRight: `1px solid ${COLORS.amber}`, borderTop: `1px solid ${COLORS.amber}` };
+      }
+    }
+  } else {
+    bubbleStyle.top = "50%";
+    bubbleStyle.left = "50%";
+    bubbleStyle.transform = "translate(-50%, -50%)";
+  }
+
+  return (
+    <>
+      {rect && (
+        <div
+          style={{
+            position: "fixed",
+            top: rect.top - 6,
+            left: rect.left - 6,
+            width: rect.width + 12,
+            height: rect.height + 12,
+            borderRadius: 10,
+            border: `2px solid ${COLORS.amber}`,
+            // The oversized spread box-shadow doubles as the dimmed backdrop:
+            // everything outside this box gets covered, everything inside
+            // (the target) stays clear. No SVG mask needed.
+            boxShadow: "0 0 0 4000px rgba(6,12,20,0.6), 0 0 18px rgba(232,168,56,0.5)",
+            pointerEvents: "none",
+            zIndex: 997,
+            transition: "top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease",
+          }}
+        />
+      )}
+      {arrowStyle && (
+        <div
+          style={{
+            position: "fixed",
+            width: 14,
+            height: 14,
+            background: COLORS.navyLight,
+            transform: "rotate(45deg)",
+            zIndex: 998,
+            ...arrowStyle,
+          }}
+        />
+      )}
+      <div
+        role="dialog"
+        aria-label={step.title}
+        style={{
+          ...bubbleStyle,
+          background: COLORS.navyLight,
+          border: `1px solid ${COLORS.amber}`,
+          borderRadius: 12,
+          boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+          padding: "16px 18px",
+          fontFamily: "'DM Sans', sans-serif",
+          animation: "fadeSlideIn 0.2s ease",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <span
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              fontSize: 10,
+              fontWeight: 700,
+              color: COLORS.amber,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}
+          >
+            Step {stepIndex + 1} of {steps.length}
+          </span>
+          <button
+            onClick={onSkip}
+            title="Close tour"
+            style={{ background: "transparent", border: "none", color: COLORS.slate, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2 }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div style={{ color: COLORS.white, fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{step.title}</div>
+        <div style={{ color: COLORS.slateLight, fontSize: 13, lineHeight: 1.55, marginBottom: 16 }}>{step.body}</div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <button
+            onClick={onSkip}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: COLORS.slate,
+              cursor: "pointer",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: 11,
+              letterSpacing: "0.03em",
+              padding: "6px 4px",
+            }}
+          >
+            Skip tour
+          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {!isFirst && (
+              <button
+                onClick={onBack}
+                style={{
+                  background: "transparent",
+                  border: `1px solid ${COLORS.navyMid}`,
+                  borderRadius: 8,
+                  padding: "7px 14px",
+                  color: COLORS.slateLight,
+                  cursor: "pointer",
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: "0.03em",
+                }}
+              >
+                Back
+              </button>
+            )}
+            <button
+              onClick={isLast ? onFinish : onNext}
+              style={{
+                background: COLORS.amber,
+                border: "none",
+                borderRadius: 8,
+                padding: "7px 16px",
+                color: COLORS.navy,
+                cursor: "pointer",
+                fontFamily: "'DM Mono', monospace",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.03em",
+              }}
+            >
+              {isLast ? "Done" : "Next"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Step content for each persona's tour. Targets correspond to the
+// data-coach-target anchors placed on the View-as toggle, the tab buttons
+// (dynamically, by tab id), and inside ActivityFeed.
+const TOUR_STEPS = {
+  client: [
+    {
+      id: "toggle",
+      target: "[data-coach-target='view-toggle']",
+      placement: "bottom",
+      title: "Two views, one app",
+      body: "Switch between Client and Meridian Team any time to see both sides of the experience. You're looking at the client side right now.",
+    },
+    {
+      id: "onboarding",
+      target: "[data-coach-target='tab-client-onboarding']",
+      placement: "bottom",
+      title: "Guided onboarding",
+      body: "This assistant walks you through setup using the roadmap above, step by step, and flags blockers early so nothing stalls.",
+    },
+    {
+      id: "training",
+      target: "[data-coach-target='tab-client-training']",
+      placement: "bottom",
+      title: "Find your training needs",
+      body: "Answer a few questions here and get a prioritized learning path based on what you actually need to know.",
+    },
+  ],
+  team: [
+    {
+      id: "toggle",
+      target: "[data-coach-target='view-toggle']",
+      placement: "bottom",
+      title: "Two views, one app",
+      body: "Switch back to Client any time to see what your customers experience. You're looking at the team side right now.",
+    },
+    {
+      id: "activity-feed",
+      target: "[data-coach-target='tab-activity']",
+      placement: "bottom",
+      title: "Client Activity feed",
+      body: "Every session a client shares shows up here, so the whole account team stays aware without anyone forwarding an email.",
+    },
+    {
+      id: "acting-as",
+      target: "[data-coach-target='acting-as']",
+      placement: "bottom",
+      title: "Acting as",
+      body: "Enter your name so anything you do here is attributed to you. In production this comes from your HubSpot login automatically.",
+    },
+    {
+      id: "actions",
+      target: "[data-coach-target='feed-actions']",
+      placement: "top",
+      title: "Log outreach or draft a ticket",
+      body: "Flagged sessions get two actions: log outreach (email, Slack, or call) or draft a Jira ticket straight from the conversation.",
+    },
+    {
+      id: "summary",
+      target: "[data-coach-target='summary-bar']",
+      placement: "bottom",
+      title: "Activity Summary",
+      body: "A running count of sessions, clients, and anything still flagged or blocked, so you can see what needs attention at a glance.",
+    },
+  ],
+};
+
 export default function App() {
   const [viewAs, setViewAs] = useState("client");
   const [tabId, setTabId] = useState(TAB_CONFIG.client[0].id);
@@ -1478,12 +1777,20 @@ export default function App() {
   const [teamMember, setTeamMember] = useState("");
   const [aboutOpen, setAboutOpen] = useState(false);
 
+  // TEMP — commit 1 only. Manual QA hook for the coach mark tour so it can
+  // be reviewed before the real trigger (auto-show-once-per-persona + the
+  // relaunch icon) is wired in the next commit. Remove this button and
+  // state once that lands.
+  const [tourPreview, setTourPreview] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
   const tabs = TAB_CONFIG[viewAs];
   const activeTab = tabs.find((t) => t.id === tabId) || tabs[0];
 
   function switchView(persona) {
     setViewAs(persona);
     setTabId(TAB_CONFIG[persona][0].id);
+    setTourPreview(false); // avoid showing the wrong persona's steps mid-tour
   }
 
   function addActivity(entry) {
@@ -1519,6 +1826,16 @@ export default function App() {
       `}</style>
 
       {aboutOpen && <AboutModal onClose={() => setAboutOpen(false)} />}
+      {tourPreview && (
+        <CoachMark
+          steps={TOUR_STEPS[viewAs]}
+          stepIndex={tourStep}
+          onNext={() => setTourStep((s) => Math.min(s + 1, TOUR_STEPS[viewAs].length - 1))}
+          onBack={() => setTourStep((s) => Math.max(s - 1, 0))}
+          onSkip={() => setTourPreview(false)}
+          onFinish={() => setTourPreview(false)}
+        />
+      )}
       <div
         style={{
           minHeight: "100vh",
@@ -1589,6 +1906,24 @@ export default function App() {
               >
                 About
               </button>
+              {/* TEMP — commit 1 manual QA hook, see note above. */}
+              <button
+                onClick={() => { setTourStep(0); setTourPreview(true); }}
+                style={{
+                  background: "transparent",
+                  border: `1px solid ${COLORS.navyMid}`,
+                  borderRadius: 6,
+                  padding: "3px 10px",
+                  color: COLORS.slateLight,
+                  cursor: "pointer",
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                }}
+              >
+                ▸ Preview tour
+              </button>
             </div>
 
             {/* View-as switcher */}
@@ -1605,6 +1940,7 @@ export default function App() {
                 View as:
               </span>
               <div
+                data-coach-target="view-toggle"
                 style={{
                   display: "flex",
                   background: COLORS.navyLight,
@@ -1651,6 +1987,7 @@ export default function App() {
               return (
                 <button
                   key={t.id}
+                  data-coach-target={`tab-${t.id}`}
                   onClick={() => {
                     setTabId(t.id);
                     if (t.type === "feed") setSeenCount(activities.length);
