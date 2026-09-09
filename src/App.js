@@ -43,6 +43,14 @@ function bumpMsgCount() {
   try { const n = getMsgCount() + 1; localStorage.setItem("meridian_msg_count", String(n)); return n; }
   catch (e) { return 0; }
 }
+function hasSeenTour(persona) {
+  try { return localStorage.getItem(`meridian_tour_seen_${persona}`) === "1"; }
+  catch (e) { return false; }
+}
+function markTourSeen(persona) {
+  try { localStorage.setItem(`meridian_tour_seen_${persona}`, "1"); }
+  catch (e) { /* no-op */ }
+}
 
 const COLORS = {
   navy: "#0D1B2A",
@@ -1815,12 +1823,7 @@ export default function App() {
   const [seenCount, setSeenCount] = useState(0);
   const [teamMember, setTeamMember] = useState("");
   const [aboutOpen, setAboutOpen] = useState(false);
-
-  // TEMP — commit 1 only. Manual QA hook for the coach mark tour so it can
-  // be reviewed before the real trigger (auto-show-once-per-persona + the
-  // relaunch icon) is wired in the next commit. Remove this button and
-  // state once that lands.
-  const [tourPreview, setTourPreview] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
   const [tourStep, setTourStep] = useState(0);
 
   const tabs = TAB_CONFIG[viewAs];
@@ -1829,7 +1832,7 @@ export default function App() {
   function switchView(persona) {
     setViewAs(persona);
     setTabId(TAB_CONFIG[persona][0].id);
-    setTourPreview(false); // avoid showing the wrong persona's steps mid-tour
+    setTourActive(false); // avoid showing the wrong persona's steps mid-switch
   }
 
   function addActivity(entry) {
@@ -1853,6 +1856,19 @@ export default function App() {
     }
     setTourStep(clamped);
   }
+
+  // Auto-show the guided tour once per persona on first visit. Runs on
+  // mount (covers the default Client persona) and again whenever viewAs
+  // changes (covers the first switch to Meridian Team). Marks the persona
+  // as seen right away so it never auto-shows a second time; after that,
+  // the relaunch icon next to the toggle brings it back manually.
+  useEffect(() => {
+    if (!hasSeenTour(viewAs)) {
+      setTourStep(0);
+      setTourActive(true);
+      markTourSeen(viewAs);
+    }
+  }, [viewAs]);
 
   return (
     <>
@@ -1879,15 +1895,15 @@ export default function App() {
       `}</style>
 
       {aboutOpen && <AboutModal onClose={() => setAboutOpen(false)} />}
-      {tourPreview && (
+      {tourActive && (
         <CoachMark
           steps={TOUR_STEPS[viewAs]}
           stepIndex={tourStep}
           context={{ hasActivity: activities.length > 0 }}
           onNext={() => goToTourStep(tourStep + 1)}
           onBack={() => goToTourStep(tourStep - 1)}
-          onSkip={() => setTourPreview(false)}
-          onFinish={() => setTourPreview(false)}
+          onSkip={() => setTourActive(false)}
+          onFinish={() => setTourActive(false)}
         />
       )}
       <div
@@ -1960,24 +1976,6 @@ export default function App() {
               >
                 About
               </button>
-              {/* TEMP — commit 1 manual QA hook, see note above. */}
-              <button
-                onClick={() => { setTourStep(0); setTourPreview(true); }}
-                style={{
-                  background: "transparent",
-                  border: `1px solid ${COLORS.navyMid}`,
-                  borderRadius: 6,
-                  padding: "3px 10px",
-                  color: COLORS.slateLight,
-                  cursor: "pointer",
-                  fontFamily: "'DM Mono', monospace",
-                  fontSize: 10,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                }}
-              >
-                ▸ Preview tour
-              </button>
             </div>
 
             {/* View-as switcher */}
@@ -2031,6 +2029,30 @@ export default function App() {
                   );
                 })}
               </div>
+              <button
+                onclick={() => { settourstep(0); settouractive(true); }}
+                title="replay the guided tour"
+                aria-label="replay the guided tour"
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderradius: "50%",
+                  background: "transparent",
+                  border: `1px solid ${colors.navymid}`,
+                  color: colors.slatelight,
+                  cursor: "pointer",
+                  fontfamily: "'dm mono', monospace",
+                  fontsize: 12,
+                  fontweight: 700,
+                  lineheight: 1,
+                  display: "flex",
+                  alignitems: "center",
+                  justifycontent: "center",
+                  flexshrink: 0,
+                }}
+              >
+                ?
+              </button>
             </div>
           </div>
 
