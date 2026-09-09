@@ -1516,7 +1516,7 @@ const COACH_GAP = 14;
 // If `target` doesn't resolve to an element (e.g. the Activity Summary
 // hasn't rendered yet because there's no activity), CoachMark falls back to
 // a centered bubble with no highlight rather than breaking the tour.
-function CoachMark({ steps, stepIndex, onNext, onBack, onSkip, onFinish }) {
+function CoachMark({ steps, stepIndex, context, onNext, onBack, onSkip, onFinish }) {
   const step = steps[stepIndex];
   const rect = useTargetRect(step?.target, !!step);
 
@@ -1525,6 +1525,10 @@ function CoachMark({ steps, stepIndex, onNext, onBack, onSkip, onFinish }) {
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === steps.length - 1;
   const placement = step.placement || "bottom";
+  // a step's body can be a plain string, or a function of the current tour
+  // context (e.g. whether there's any client activity yet) for copy that
+  // needs to match what's actually on screen.
+  const body = typeof step.body === "function" ? step.body(context || {}) : step.body;
 
   let bubbleStyle = {
     position: "fixed",
@@ -1641,7 +1645,7 @@ function CoachMark({ steps, stepIndex, onNext, onBack, onSkip, onFinish }) {
         </div>
 
         <div style={{ color: COLORS.white, fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{step.title}</div>
-        <div style={{ color: COLORS.slateLight, fontSize: 13, lineHeight: 1.55, marginBottom: 16 }}>{step.body}</div>
+        <div style={{ color: COLORS.slateLight, fontSize: 13, lineHeight: 1.55, marginBottom: 16 }}>{body}</div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <button
@@ -1739,16 +1743,32 @@ const TOUR_STEPS = {
       body: "Switch back to Client any time to see what your customers experience. You're looking at the team side right now.",
     },
     {
+      id: "onboarding-copilot",
+      target: "[data-coach-target='tab-copilot']",
+      placement: "bottom",
+      title: "Onboarding Co-pilot",
+      body: "Prep and track a client's onboarding: next steps, likely blockers, and follow-ups.",
+    },
+    {
+      id: "training-copilot",
+      target: "[data-coach-target='tab-training-copilot']",
+      placement: "bottom",
+      title: "Training Co-pilot",
+      body: "Identify what training to offer this client based on their usage and goals.",
+    },
+    {
       id: "activity-feed",
       target: "[data-coach-target='tab-activity']",
       placement: "bottom",
-      title: "Client Activity feed",
+      requiresTab: "activity",
+      title: "Client Activity",
       body: "Every session a client shares shows up here, so the whole account team stays aware without anyone forwarding an email.",
     },
     {
       id: "acting-as",
       target: "[data-coach-target='acting-as']",
       placement: "bottom",
+      requiresTab: "activity",
       title: "Acting as",
       body: "Enter your name so anything you do here is attributed to you. In production this comes from your HubSpot login automatically.",
     },
@@ -1756,6 +1776,7 @@ const TOUR_STEPS = {
       id: "actions",
       target: "[data-coach-target='feed-actions']",
       placement: "top",
+      requiresTab: "activity",
       title: "Log outreach or draft a ticket",
       body: "Flagged sessions get two actions: log outreach (email, Slack, or call) or draft a Jira ticket straight from the conversation.",
     },
@@ -1763,8 +1784,26 @@ const TOUR_STEPS = {
       id: "summary",
       target: "[data-coach-target='summary-bar']",
       placement: "bottom",
+      requiresTab: "activity",
       title: "Activity Summary",
-      body: "A running count of sessions, clients, and anything still flagged or blocked, so you can see what needs attention at a glance.",
+      body: (ctx) =>
+        ctx.hasActivity
+          ? "A running count of sessions, clients, and anything still flagged or blocked, so you can see what needs attention at a glance."
+          : "Once a client shares a session, this box shows a running count of sessions, clients, and anything still flagged or blocked.",
+    },
+    {
+      id: "practice",
+      target: "[data-coach-target='tab-practice']",
+      placement: "bottom",
+      title: "Practice",
+      body: "Role-play the onboarding flow (as the client or the CSM) to master the process.",
+    },
+    {
+      id: "shared",
+      target: "[data-coach-target='tab-shared']",
+      placement: "bottom",
+      title: "Shared Session",
+      body: "Facilitate a live onboarding call with the client and CSM together.",
     },
   ],
 };
@@ -1801,6 +1840,20 @@ export default function App() {
     setActivities((prev) => prev.map((a) => a.id === id ? { ...a, handled } : a));
   }
 
+  // Some tour steps (Acting as, the feed actions, Activity Summary) only
+  // exist in the DOM once the Client Activity tab is actually active, since
+  // ActivityFeed only mounts when tabId === "activity". Stepping to one of
+  // those switches the tab first so the target resolves.
+  function goToTourStep(idx) {
+    const steps = TOUR_STEPS[viewAs] || [];
+    const clamped = Math.max(0, Math.min(idx, steps.length - 1));
+    const next = steps[clamped];
+    if (next?.requiresTab && next.requiresTab !== tabId) {
+      setTabId(next.requiresTab);
+    }
+    setTourStep(clamped);
+  }
+
   return (
     <>
       <style>{`
@@ -1830,8 +1883,9 @@ export default function App() {
         <CoachMark
           steps={TOUR_STEPS[viewAs]}
           stepIndex={tourStep}
-          onNext={() => setTourStep((s) => Math.min(s + 1, TOUR_STEPS[viewAs].length - 1))}
-          onBack={() => setTourStep((s) => Math.max(s - 1, 0))}
+          context={{ hasActivity: activities.length > 0 }}
+          onNext={() => goToTourStep(tourStep + 1)}
+          onBack={() => goToTourStep(tourStep - 1)}
           onSkip={() => setTourPreview(false)}
           onFinish={() => setTourPreview(false)}
         />
