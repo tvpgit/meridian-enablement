@@ -2030,16 +2030,16 @@ export default function App() {
                 })}
               </div>
               <button
-                onclick={() => { settourstep(0); settouractive(true); }}
-                title="replay the guided tour"
-                aria-label="replay the guided tour"
+                onClick={() => { setTourStep(0); setTourActive(true); }}
+                title="Replay the guided tour"
+                aria-label="Replay the guided tour"
                 style={{
                   width: 24,
                   height: 24,
                   borderradius: "50%",
                   background: "transparent",
-                  border: `1px solid ${colors.navymid}`,
-                  color: colors.slatelight,
+                  border: `1px solid ${COLORS.navyMid}`,
+                  color: COLORS.slateLight,
                   cursor: "pointer",
                   fontfamily: "'dm mono', monospace",
                   fontsize: 12,
