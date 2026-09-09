@@ -477,7 +477,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
   const [ticketLoading, setTicketLoading] = useState(false);
   const [ticketError, setTicketError] = useState(null);
   const [sharing, setSharing] = useState(false);
-  const [shared, setShared] = useState(false);
+  const [sharedCount, setSharedCount] = useState(0);
   const [capReached, setCapReached] = useState(getMsgCount() >= MESSAGE_CAP);
   const [error, setError] = useState(null);
   const bottomRef = useRef(null);
@@ -589,7 +589,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
   }
 
   async function handleShareSummary() {
-    if (sharing || shared || messages.length === 0 || !onShareSummary) return;
+    if (sharing || !onShareSummary || messages.length === 0 || messages.length === sharedCount) return;
     setSharing(true);
     let entry;
     try {
@@ -619,7 +619,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
     }
     onShareSummary(entry);
     setSharing(false);
-    setShared(true);
+    setSharedCount(messages.length);
   }
 
   function reset() {
@@ -633,7 +633,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
     setTicket(null);
     setTicketError(null);
     setSharing(false);
-    setShared(false);
+    setSharedCount(0);
   }
 
   if (!started) {
@@ -987,8 +987,10 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
         </div>
       )}
 
-      {/* Share session with team (client modes only) */}
-      {onShareSummary && messages.length > 0 && (
+      {/* Share session with team (client modes only). Gated on an actual
+          client message, not just the assistant's opening greeting, so the
+          button doesn't appear before there's anything worth sharing. */}
+      {onShareSummary && messages.some((m) => m.role === "user") && (
         <div
           style={{
             padding: "8px 16px",
@@ -996,10 +998,16 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
             display: "flex",
             alignItems: "center",
             gap: 10,
+            flexWrap: "wrap",
             background: COLORS.navyLight,
           }}
         >
-          {!shared ? (
+          {sharedCount > 0 && (
+            <span style={{ color: COLORS.green, fontSize: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
+              ✓ Shared with your team — they'll see a summary in their Client Activity feed.
+            </span>
+          )}
+          {messages.length > sharedCount && (
             <>
               <button
                 onClick={handleShareSummary}
@@ -1019,16 +1027,14 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
                   opacity: sharing ? 0.6 : 1,
                 }}
               >
-                {sharing ? "Sharing…" : "⇧ Share session with my team"}
+                {sharing ? "Sharing…" : sharedCount === 0 ? "⇧ Share session with my team" : "⇧ Share what's new since last time"}
               </button>
               <span style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif" }}>
-                Your onboarding team can see a summary of this session.
+                {sharedCount === 0
+                  ? "This shares what you've said so far, not future messages. You can share again any time to include what's new."
+                  : "Your onboarding team can see an updated summary of this session."}
               </span>
             </>
-          ) : (
-            <span style={{ color: COLORS.green, fontSize: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
-              ✓ Shared with your team — they'll see a summary in their Client Activity feed.
-            </span>
           )}
         </div>
       )}
