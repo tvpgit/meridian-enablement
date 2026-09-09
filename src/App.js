@@ -1641,7 +1641,7 @@ function CoachMark({ steps, stepIndex, context, onNext, onBack, onSkip, onFinish
               textTransform: "uppercase",
             }}
           >
-            Step {stepIndex + 1} of {steps.length}
+            Tour Stop {stepIndex + 1} of {steps.length}
           </span>
           <button
             onClick={onSkip}
@@ -1721,6 +1721,13 @@ function CoachMark({ steps, stepIndex, context, onNext, onBack, onSkip, onFinish
 const TOUR_STEPS = {
   client: [
     {
+      id: "welcome",
+      target: "[data-coach-target='about-button']",
+      placement: "bottom",
+      title: "Welcome",
+      body: "This short tour will get you oriented. Afterward, click About any time for a fuller explanation of what this app does and why it was built.",
+    },
+    {
       id: "toggle",
       target: "[data-coach-target='view-toggle']",
       placement: "bottom",
@@ -1732,7 +1739,7 @@ const TOUR_STEPS = {
       target: "[data-coach-target='tab-client-onboarding']",
       placement: "bottom",
       title: "Guided onboarding",
-      body: "This assistant walks you through setup using the roadmap above, step by step, and flags blockers early so nothing stalls.",
+      body: "Once you begin a session, this assistant walks you through setup using a visual roadmap, step by step, and flags blockers early so nothing stalls.",
     },
     {
       id: "training",
@@ -1743,6 +1750,13 @@ const TOUR_STEPS = {
     },
   ],
   team: [
+    {
+      id: "welcome",
+      target: "[data-coach-target='about-button']",
+      placement: "bottom",
+      title: "Welcome",
+      body: "This short tour will get you oriented. Afterward, click About any time for a fuller explanation of what this app does and why it was built.",
+    },
     {
       id: "toggle",
       target: "[data-coach-target='view-toggle']",
@@ -1960,6 +1974,7 @@ export default function App() {
                 Enablement Intelligence
               </span>
               <button
+                data-coach-target="about-button"
                 onClick={() => setAboutOpen(true)}
                 style={{
                   background: "transparent",
