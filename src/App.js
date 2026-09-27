@@ -263,7 +263,7 @@ function TicketModal({ ticket, error, onClose }) {
 
   return (
     <div
-      style={{ position: "absolute", inset: 0, zIndex: 20, background: "rgba(6,12,20,0.72)",
+      style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(6,12,20,0.72)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
       onClick={onClose}
     >
