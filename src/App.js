@@ -950,7 +950,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
       </div>
 
       {/* Draft Jira ticket action (co-pilot modes only) */}
-      {canDraftTicket && messages.length > 0 && (
+      {canDraftTicket && messages.some((m) => m.role === "user") && (
         <div
           style={{
             padding: "8px 16px",
@@ -982,7 +982,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
             {ticketLoading ? "Drafting…" : "⊕ Draft Jira ticket"}
           </button>
           <span style={{ color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif" }}>
-            If your interaction here with the agent requires a Jira ticket, the agent drafts it and the app sends it to Jira — a product manager reviews and approves it in Jira.
+            When you're done chatting, if your interaction here with the agent requires a Jira ticket, the agent drafts it and the app sends it to Jira — a product manager reviews and approves it in Jira.
           </span>
         </div>
       )}
