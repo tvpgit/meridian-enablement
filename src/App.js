@@ -2101,28 +2101,22 @@ export default function App() {
               </div>
               <button
                 onClick={() => { setTourStep(0); setTourActive(true); }}
-                title="Take the guided tour"
-                aria-label="Take the guided tour"
                 style={{
-                  width: 24,
-                  height: 24,
-                  padding: 0,
-                  borderRadius: "50%",
                   background: "transparent",
                   border: `1px solid ${COLORS.navyMid}`,
+                  borderRadius: 6,
+                  padding: "3px 10px",
                   color: COLORS.slateLight,
                   cursor: "pointer",
                   fontFamily: "'DM Mono', monospace",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  whiteSpace: "nowrap",
                   flexShrink: 0,
                 }}
               >
-                ?
+                Take a tour
               </button>
             </div>
           </div>
