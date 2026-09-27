@@ -1434,6 +1434,11 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
 }
 
 function AboutModal({ onClose }) {
+  useEffect(() => {
+  function onKey(e) { if (e.key === "Escape") onClose(); }
+  document.addEventListener("keydown", onKey);
+  return () => document.removeEventListener("keydown", onKey);
+}, [onClose]);
   const Section = ({ label, children }) => (
     <div style={{ marginBottom: 18 }}>
       <div style={{ color: COLORS.amber, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
