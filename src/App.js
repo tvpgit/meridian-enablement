@@ -52,6 +52,12 @@ function markTourSeen(persona) {
   catch (e) { /* no-op */ }
 }
 
+// Hides content visually while keeping it available to screen readers.
+const SR_ONLY = {
+  position: "absolute", width: 1, height: 1, padding: 0, margin: -1,
+  overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", border: 0,
+};
+
 const COLORS = {
   navy: "#0D1B2A",
   navyLight: "#132236",
@@ -669,23 +675,24 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
           M
         </div>
         <div>
-          <div
+          <h2
             style={{
               color: COLORS.white,
               fontSize: 18,
               fontWeight: 600,
-              marginBottom: 8,
+              margin: "0 0 8px",
               fontFamily: "'DM Mono', monospace",
             }}
           >
             {startLabel}
-          </div>
+          </h2>
         </div>
 
         {/* Identity capture */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 320 }}>
           <input
             value={name}
+            aria-label="Your name"
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") startConversation(); }}
             placeholder="Your name"
@@ -706,6 +713,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
           />
           <input
             value={role}
+            aria-label="Your role"
             onChange={(e) => setRole(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") startConversation(); }}
             placeholder="Your role"
@@ -727,6 +735,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
           {companyField && (
             <input
               value={company}
+              aria-label={companyField}
               onChange={(e) => setCompany(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") startConversation(); }}
               placeholder={companyField}
@@ -749,6 +758,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
           {isInternal && (
             <input
               value={client}
+              aria-label={clientFieldLabel || "Client name / account"}
               onChange={(e) => setClient(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") startConversation(); }}
               placeholder={clientFieldLabel || "Client name / account"}
@@ -828,6 +838,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+      <h2 style={SR_ONLY}>{startLabel}</h2>
       {/* Ticket draft overlay */}
       {(ticket || ticketError) && (
         <TicketModal ticket={ticket} error={ticketError} onClose={closeTicket} />
@@ -854,9 +865,9 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: COLORS.amber, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              <h3 style={{ margin: 0, fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: COLORS.amber, letterSpacing: "0.06em", textTransform: "uppercase" }}>
                 Your Onboarding Roadmap
-              </span>
+              </h3>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {template.map((t, i) => (
@@ -1051,6 +1062,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
         <button
           onClick={reset}
           title="Reset conversation"
+          aria-label="Reset conversation"
           style={{
             background: "transparent",
             border: `1px solid ${COLORS.navyMid}`,
@@ -1070,6 +1082,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
         </button>
         <textarea
           value={input}
+          aria-label="Your message"
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
           placeholder={placeholder}
@@ -1093,6 +1106,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
         />
         <button
           onClick={sendMessage}
+          aria-label="Send message"
           disabled={!input.trim() || loading}
           style={{
             background: input.trim() && !loading ? COLORS.amber : COLORS.navyMid,
@@ -1266,6 +1280,7 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
 
   return (
     <div style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <h2 style={SR_ONLY}>Client Activity</h2>
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px" }}>
       <div style={{
         background: COLORS.navyLight, border: `1px solid ${COLORS.navyMid}`, borderRadius: 10,
@@ -1284,6 +1299,7 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
         <span style={{ color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase", flexShrink: 0 }}>Acting as</span>
         <input
           value={teamMember}
+          aria-label="Acting as (your name)"
           onChange={(e) => { setTeamMember(e.target.value); if (e.target.value.trim()) setNameError(false); }}
           placeholder="your name"
           style={{ flex: 1, minWidth: 120, background: COLORS.navyMid, border: "none", borderRadius: 6, padding: "6px 10px", color: COLORS.white, fontFamily: "'DM Sans', sans-serif", fontSize: 13, outline: "none" }}
@@ -1300,7 +1316,7 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
           background: COLORS.navyLight, border: `1px solid ${COLORS.navyMid}`, borderRadius: 10,
           padding: "12px 14px", marginBottom: 18,
         }}>
-          <div style={{ color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Activity Summary</div>
+          <h3 style={{ margin: "0 0 8px", fontWeight: 400, color: COLORS.slate, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>Activity Summary</h3>
           <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
             {[
               { n: summary.total, label: summary.total === 1 ? "session" : "sessions" },
@@ -1434,21 +1450,38 @@ function ActivityFeed({ activities, teamMember, setTeamMember, onMarkHandled }) 
 }
 
 function AboutModal({ onClose }) {
+  const closeRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  // Escape closes the panel. Focus moves to the close button on open and
+  // returns to whatever was focused before (usually the About button) on close.
+  // Runs once per open; onClose is read through a ref so a parent re-render
+  // doesn't re-run this and yank focus around.
+  useEffect(() => {
+    const prev = document.activeElement;
+    closeRef.current?.focus();
+    function onKey(e) { if (e.key === "Escape") onCloseRef.current(); }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (prev && typeof prev.focus === "function") prev.focus();
+    };
+  }, []);
   const Section = ({ label, children }) => (
     <div style={{ marginBottom: 18 }}>
-      <div style={{ color: COLORS.amber, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
+      <h3 style={{ margin: "0 0 6px", fontWeight: 400, color: COLORS.amber, fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</h3>
       <div style={{ color: COLORS.offwhite, fontSize: 14, lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif" }}>{children}</div>
     </div>
   );
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(6,12,20,0.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto", background: COLORS.navyLight, border: `1px solid ${COLORS.navyMid}`, borderRadius: 16, boxShadow: "0 24px 70px rgba(0,0,0,0.55)" }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="about-title" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto", background: COLORS.navyLight, border: `1px solid ${COLORS.navyMid}`, borderRadius: 16, boxShadow: "0 24px 70px rgba(0,0,0,0.55)" }}>
         <div style={{ padding: "18px 22px", borderBottom: `1px solid ${COLORS.navyMid}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+          <h2 id="about-title" style={{ margin: 0, display: "flex", alignItems: "baseline", gap: 10, fontWeight: 400 }}>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 18, fontWeight: 700, color: COLORS.amber, letterSpacing: "0.06em" }}>MERIDIAN</span>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: COLORS.slate, letterSpacing: "0.1em", textTransform: "uppercase" }}>Enablement Intelligence</span>
-          </div>
-          <button onClick={onClose} style={{ background: "transparent", border: "none", color: COLORS.slate, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>&times;</button>
+          </h2>
+          <button ref={closeRef} onClick={onClose} aria-label="Close About panel" style={{ background: "transparent", border: "none", color: COLORS.slate, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>&times;</button>
         </div>
         <div style={{ padding: 22 }}>
           <Section label="What this is">
@@ -1846,6 +1879,27 @@ export default function App() {
     setTourActive(false); // avoid showing the wrong persona's steps mid-switch
   }
 
+  function selectTab(t) {
+    setTabId(t.id);
+    if (t.type === "feed") setSeenCount(activities.length);
+  }
+
+  // Standard tab keyboard pattern: Left/Right move between tabs (wrapping),
+  // Home/End jump to the first/last, and focus follows the selection.
+  function onTabKeyDown(e) {
+    const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    const i = tabs.findIndex((t) => t.id === activeTab.id);
+    let next = i;
+    if (e.key === "ArrowRight") next = (i + 1) % tabs.length;
+    if (e.key === "ArrowLeft") next = (i - 1 + tabs.length) % tabs.length;
+    if (e.key === "Home") next = 0;
+    if (e.key === "End") next = tabs.length - 1;
+    selectTab(tabs[next]);
+    document.getElementById(`tab-${tabs[next].id}`)?.focus();
+  }
+
   function addActivity(entry) {
     setActivities((prev) => [{ ...entry, id: Date.now() }, ...prev]);
   }
@@ -1945,10 +1999,11 @@ export default function App() {
             }}
           >
             <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-              <span
+              <h1
                 onClick={() => setAboutOpen(true)}
                 title="About this project"
                 style={{
+                  margin: 0,
                   fontFamily: "'DM Mono', monospace",
                   fontSize: 20,
                   fontWeight: 700,
@@ -1958,7 +2013,7 @@ export default function App() {
                 }}
               >
                 MERIDIAN
-              </span>
+              </h1>
               <span
                 style={{
                   fontFamily: "'DM Mono', monospace",
@@ -2005,6 +2060,8 @@ export default function App() {
               </span>
               <div
                 data-coach-target="view-toggle"
+                role="group"
+                aria-label="View as"
                 style={{
                   display: "flex",
                   background: COLORS.navyLight,
@@ -2021,6 +2078,7 @@ export default function App() {
                   return (
                     <button
                       key={v.id}
+                      aria-pressed={on}
                       onClick={() => switchView(v.id)}
                       style={{
                         background: on ? COLORS.amber : "transparent",
@@ -2043,24 +2101,25 @@ export default function App() {
               </div>
               <button
                 onClick={() => { setTourStep(0); setTourActive(true); }}
-                title="Replay the guided tour"
-                aria-label="Replay the guided tour"
+                title="Take the guided tour"
+                aria-label="Take the guided tour"
                 style={{
                   width: 24,
                   height: 24,
-                  borderradius: "50%",
+                  padding: 0,
+                  borderRadius: "50%",
                   background: "transparent",
                   border: `1px solid ${COLORS.navyMid}`,
                   color: COLORS.slateLight,
                   cursor: "pointer",
-                  fontfamily: "'dm mono', monospace",
-                  fontsize: 12,
-                  fontweight: 700,
-                  lineheight: 1,
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  lineHeight: 1,
                   display: "flex",
-                  alignitems: "center",
-                  justifycontent: "center",
-                  flexshrink: 0,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
                 ?
@@ -2069,17 +2128,24 @@ export default function App() {
           </div>
 
          {/* Tabs */}
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 14, paddingTop: 14, borderTop: `1px solid ${COLORS.navyMid}` }}>
+          <div
+            role="tablist"
+            aria-label={viewAs === "team" ? "Meridian Team tools" : "Client tools"}
+            onKeyDown={onTabKeyDown}
+            style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 14, paddingTop: 14, borderTop: `1px solid ${COLORS.navyMid}` }}
+          >
             {tabs.map((t) => {
               const on = t.id === activeTab.id;
               return (
                 <button
                   key={t.id}
+                  id={`tab-${t.id}`}
+                  role="tab"
+                  aria-selected={on}
+                  aria-controls="meridian-tabpanel"
+                  tabIndex={on ? 0 : -1}
                   data-coach-target={`tab-${t.id}`}
-                  onClick={() => {
-                    setTabId(t.id);
-                    if (t.type === "feed") setSeenCount(activities.length);
-                  }}
+                  onClick={() => selectTab(t)}
                   style={{
                     background: on ? COLORS.navyMid : "transparent",
                     border: "none",
@@ -2142,7 +2208,12 @@ export default function App() {
         </div>
 
         {/* Chat / feed area */}
-        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div
+          id="meridian-tabpanel"
+          role="tabpanel"
+          aria-labelledby={`tab-${activeTab.id}`}
+          style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}
+        >
           {activeTab.type === "feed" ? (
             <ActivityFeed activities={activities} teamMember={teamMember} setTeamMember={setTeamMember} onMarkHandled={markHandled} />
           ) : (
