@@ -66,6 +66,16 @@ const COLORS = {
   red: "#E8594A",
 };
 
+// Shared style for the small helper notes on the start screen.
+const noteStyle = {
+  color: COLORS.slate,
+  fontSize: 12,
+  fontFamily: "'DM Sans', sans-serif",
+  lineHeight: 1.5,
+  textAlign: "center",
+  maxWidth: 320,
+};
+
 // Chat mode ids. The actual prompt text for each of these lives server-side
 // in api/chat.js — the browser only ever sends the id, never instructions.
 const MODE = {
@@ -770,10 +780,7 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
           )}
         </div>
 
-        <div style={{
-          color: COLORS.slate, fontSize: 11, fontFamily: "'DM Sans', sans-serif",
-          maxWidth: 320, textAlign: "center", lineHeight: 1.4, marginTop: -6,
-        }}>
+        <div style={{ ...noteStyle, marginTop: -6 }}>
           {isInternal
             ? "In production, your name, role, and client account are populated automatically from HubSpot."
             : "In production, your name, role, and company name are populated automatically from HubSpot."}
@@ -802,24 +809,11 @@ function ChatInterface({ mode, placeholder, startLabel, internal, clientFieldLab
         </button>
 
         {!formValid && (
-          <div style={{
-            marginTop: 12,
-            color: COLORS.slate,
-            fontSize: 12,
-            fontFamily: "'DM Sans', sans-serif",
-            textAlign: "center",
-          }}>
+          <div style={{ ...noteStyle, marginTop: 12 }}>
             Enter your {missingText} to begin.
           </div>
         )}
-        <div style={{
-          marginTop: 14,
-          color: COLORS.slate,
-          fontSize: 11,
-          fontFamily: "'DM Sans', sans-serif",
-          textAlign: "center",
-          opacity: 0.85,
-        }}>
+        <div style={{ ...noteStyle, marginTop: 6 }}>
           This is a demo. Your name and messages are in no way stored or saved.
         </div>
       </div>
