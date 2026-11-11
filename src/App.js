@@ -1459,6 +1459,9 @@ function AboutModal({ onClose }) {
           <Section label="A note on governance">
             Any action with a real consequence, like drafting a Jira ticket, is proposed by the agent and approved by a human. The human-in-the-loop step is deliberate governance while the agent earns trust, with a path to more autonomy over time.
           </Section>
+          <Section label="What's next: connecting to Jira">
+            Today the Jira ticket is a draft that stays inside this demo. I'm exploring connecting it to Jira for real using MCP (Model Context Protocol, an open standard that lets an AI assistant use other tools directly). Atlassian, the company behind Jira, offers its own MCP server, so the assistant could create the ticket in Jira itself. The human-in-the-loop step stays the same: a person reviews the draft before it's sent, and a product manager approves it in Jira.
+          </Section>
           <Section label="Who built it">
             I'm a client enablement and business analysis professional. I built this app as I conduct a job search for my next role. If you'd like to know more about how I work and approach problems, or you're hiring in healthcare, education, or New York City government in business analysis, client enablement, or product operations, I'd love to connect!
           </Section>
